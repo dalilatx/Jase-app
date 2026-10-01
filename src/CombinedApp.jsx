@@ -6931,12 +6931,18 @@ function ChildPicker({ familyId, onPick }) {
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
   const [activeChild, setActiveChild] = useState(null);
+  const userIdRef = useRef(undefined);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // This also fires for routine background events (the hourly token
+      // refresh, returning to the tab), so only reset the picked child when
+      // the signed-in account actually changes or signs out.
+      const newUserId = (newSession && newSession.user && newSession.user.id) || null;
+      if (userIdRef.current !== newUserId) setActiveChild(null);
+      userIdRef.current = newUserId;
       setSession(newSession);
-      setActiveChild(null); // signing out (or switching accounts) always resets the picked child
     });
     return () => listener.subscription.unsubscribe();
   }, []);
