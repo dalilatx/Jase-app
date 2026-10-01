@@ -4533,7 +4533,7 @@ function EquationMatchMode({ grade, onExit }) {
   }
 
   function factSpeechFromLabel(label) {
-    return label.replace("+", " plus ").replace("-", " minus ").replace("×", " times ");
+    return label.replace("+", " plus ").replace("-", " minus ").replace("×", " times ").replace("÷", " divided by ");
   }
 
   const allMatched = matched.length === cards.length;
@@ -5034,6 +5034,7 @@ function EquationBuilderMode({ grade, onExit }) {
     if (item.text === "+") mathSpeak("plus");
     else if (item.text === "-") mathSpeak("minus");
     else if (item.text === "×") mathSpeak("times");
+    else if (item.text === "÷") mathSpeak("divided by");
     else if (item.text === "=") mathSpeak("equals");
     else mathSpeak(item.text);
   }
@@ -5114,9 +5115,21 @@ function EquationBuilderMode({ grade, onExit }) {
     });
   }
 
+  // Any arrangement of the tiles that is a true equation counts — e.g. both
+  // "2 + 3 = 5" and "3 + 2 = 5", or "5 = 2 + 3" — not just the stored order.
+  function isTrueEquation(tokens) {
+    if (tokens.length !== 5) return false;
+    let a, op, b, result;
+    if (tokens[3] === "=") [a, op, b, , result] = tokens;
+    else if (tokens[1] === "=") [result, , a, op, b] = tokens;
+    else return false;
+    if (!OP_WORD[op] || ![a, b, result].every((t) => /^\d+$/.test(t))) return false;
+    return computeAnswer(Number(a), op, Number(b)) === Number(result);
+  }
+
   function checkEquation() {
     const attempt = built.map((w) => w.text).join(" ");
-    if (attempt === answerText) {
+    if (attempt === answerText || isTrueEquation(built.map((w) => w.text))) {
       setStatus("correct");
       mathSpeak("Correct equation!");
     } else {
