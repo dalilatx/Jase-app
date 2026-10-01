@@ -6624,6 +6624,13 @@ function CombinedApp() {
     setSettings({ ...next });
   }
 
+  // Nearly all text sizes are Tailwind rem classes, which follow the root
+  // <html> font size and ignore a wrapper's em size — so scale the root.
+  useEffect(() => {
+    document.documentElement.style.fontSize = settings.fontScale === "large" ? "108%" : "";
+    return () => { document.documentElement.style.fontSize = ""; };
+  }, [settings.fontScale]);
+
   function goSubjectPicker() { setSubject(null); setGlobalView(null); }
 
   if (!settingsLoaded) {
@@ -6634,11 +6641,10 @@ function CombinedApp() {
     );
   }
 
-  const fontScaleStyle = settings.fontScale === "large" ? { fontSize: "1.08em" } : {};
   const dyslexiaStyle = settings.dyslexiaSpacing ? { letterSpacing: "0.04em", wordSpacing: "0.12em" } : {};
 
   return (
-    <div style={{ ...fontScaleStyle, ...dyslexiaStyle }}>
+    <div style={dyslexiaStyle}>
       {globalView === "settings" && (
         <SettingsPanel settings={settings} onChange={updateSettings} onBack={() => setGlobalView(null)} />
       )}
@@ -6740,8 +6746,10 @@ function makeCloudStorage(childId) {
 function AccountBar({ childName, onSwitchChild, onSignOut }) {
   return (
     <div
-      className="flex items-center justify-between px-4 py-2 text-sm"
-      style={{ background: "#FBF4E6", borderBottom: "1px solid #E7DCC4" }}
+      className="flex items-center justify-between pl-4 py-2 text-sm"
+      // Extra right padding keeps these links clear of the session timer badge
+      // that's pinned to the top-right corner during activities.
+      style={{ background: "#FBF4E6", borderBottom: "1px solid #E7DCC4", paddingRight: 104 }}
     >
       <div className="font-bold" style={{ color: "#1B2430" }}>{childName}'s learning</div>
       <div className="flex items-center gap-3">
