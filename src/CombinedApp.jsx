@@ -1655,7 +1655,9 @@ function SmartPracticeMode({ grade, pool, onMaster, onExit }) {
     const word = order[idx];
     if (typed.trim().toLowerCase() === word.toLowerCase()) {
       setStatus("correct");
-      onMaster(grade, word);
+      // The AI may suggest practice words that aren't on this grade's list;
+      // only list words count toward mastery (otherwise counts pass 100%).
+      if (WORD_LISTS[grade].includes(word)) onMaster(grade, word);
       playChime(true);
       speak("Great job!");
     } else {
@@ -3192,9 +3194,16 @@ function TrendChart({ snapshots, field, accent, label }) {
   );
 }
 
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function printReport(title, sections) {
   const w = window.open("", "_blank");
-  if (!w) return false;
+  if (!w) {
+    alert("Your browser blocked the printable summary window. Please allow pop-ups for this site and try again.");
+    return false;
+  }
   const html = `<!DOCTYPE html><html><head><title>${title}</title><meta charset="utf-8">
 <style>
 body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 24px;color:#1c2321;line-height:1.6}
@@ -3273,8 +3282,13 @@ function ProgressReport({ progress, onExit }) {
     const streakText = streakData ? `Current streak: ${streakData.currentStreak} days.` : "";
     const prompt = `You're writing a brief, warm weekly note to a parent about their young child's reading practice this week, like a teacher's note home. Data: ${summary}. ${streakText} In 3-4 sentences: what's going well, what still needs work, and one plain, practical suggestion for the coming week. Warm but honest, no fluff, speak directly to the parent.`;
     const reply = await askClaude(prompt, 400);
-    const note = { text: reply || "Couldn't generate this week's note — try again in a moment.", date: todayStr() };
     setWeeklyLoading(false);
+    if (!reply) {
+      // Show the error, but keep the last good note saved rather than overwriting it.
+      setWeeklyNote({ text: "Couldn't generate this week's note — try again in a moment.", date: todayStr(), failed: true });
+      return;
+    }
+    const note = { text: reply, date: todayStr() };
     setWeeklyNote(note);
     try { await window.storage.set(WEEKLY_NOTE_KEY, JSON.stringify(note)); } catch (e) {}
   }
@@ -3414,8 +3428,8 @@ function ProgressReport({ progress, onExit }) {
               <h2>Progress by Grade Level</h2><ul>${perGrade}</ul>
               <h2>Most Frequently Missed Words</h2>
               <ul>${hardest || "<li>None recorded yet.</li>"}</ul>
-              ${patternReport ? `<h2>Observed Patterns</h2><div class="note">${patternReport}</div>` : ""}
-              ${weeklyNote ? `<h2>Recent Summary</h2><div class="note">${weeklyNote.text}</div>` : ""}
+              ${patternReport ? `<h2>Observed Patterns</h2><div class="note">${escapeHtml(patternReport)}</div>` : ""}
+              ${weeklyNote && !weeklyNote.failed ? `<h2>Recent Summary</h2><div class="note">${escapeHtml(weeklyNote.text)}</div>` : ""}
               <h2>Note</h2>
               <p style="font-size:12px;color:#6b6259">This summary reflects in-app practice only and is not a diagnostic assessment.</p>
             `);
