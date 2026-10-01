@@ -63,10 +63,14 @@ function playChime(correct) {
 
 // --- Shared app-wide settings: text size, dyslexia-friendly spacing, calm game mode ---
 const SETTINGS_KEY = "combined-app-settings";
-let appSettings = { fontScale: "normal", dyslexiaSpacing: false, calmMode: false };
+const DEFAULT_APP_SETTINGS = { fontScale: "normal", dyslexiaSpacing: false, calmMode: false };
+let appSettings = { ...DEFAULT_APP_SETTINGS };
 function getCalmMode() { return appSettings.calmMode; }
 
 async function loadAppSettings() {
+  // Start from defaults each time so a newly picked child doesn't inherit
+  // the previous child's settings.
+  appSettings = { ...DEFAULT_APP_SETTINGS };
   try {
     const res = await window.storage.get(SETTINGS_KEY);
     if (res && res.value) appSettings = { ...appSettings, ...JSON.parse(res.value) };
@@ -118,26 +122,38 @@ const emptyAnalytics = () => ({
   snapshots: [],      // [{ date, readingMastered, mathMastered }]
 });
 
-let analyticsCache = null;
+// The cache belongs to the storage (i.e. the child) that loaded it. Switching
+// kids or families swaps window.storage, so a cache from the old one must never
+// be reused — otherwise one child's stats get saved into another child's record.
+// Caching the promise (not the result) also stops two quick answers from each
+// loading their own copy and the second save erasing the first.
+let analyticsPromise = null;
+let analyticsStore = null;
 
-async function loadAnalytics() {
-  if (analyticsCache) return analyticsCache;
-  let data = emptyAnalytics();
-  try {
-    const res = await window.storage.get(ANALYTICS_KEY);
-    if (res && res.value) data = { ...data, ...JSON.parse(res.value) };
-  } catch (e) {}
-  analyticsCache = data;
-  return data;
+function loadAnalytics() {
+  const store = window.storage;
+  if (!analyticsPromise || analyticsStore !== store) {
+    analyticsStore = store;
+    analyticsPromise = (async () => {
+      let data = emptyAnalytics();
+      try {
+        const res = await store.get(ANALYTICS_KEY);
+        if (res && res.value) data = { ...data, ...JSON.parse(res.value) };
+      } catch (e) {}
+      return data;
+    })();
+  }
+  return analyticsPromise;
 }
-async function saveAnalytics(data) {
-  analyticsCache = data;
-  try { await window.storage.set(ANALYTICS_KEY, JSON.stringify(data)); } catch (e) {}
+function resetAnalyticsCache() { analyticsPromise = null; analyticsStore = null; }
+async function saveAnalytics(data, store) {
+  try { await store.set(ANALYTICS_KEY, JSON.stringify(data)); } catch (e) {}
 }
 async function bumpAnalytics(mutator) {
+  const store = window.storage;
   const data = await loadAnalytics();
   mutator(data);
-  await saveAnalytics(data);
+  await saveAnalytics(data, store);
 }
 
 function logAnswer(correct) {
@@ -5585,6 +5601,8 @@ async function waImportBackup(payload) {
   for (const key of Object.keys(payload.data)) {
     try { await window.storage.set(key, payload.data[key]); } catch (e) {}
   }
+  // Drop the in-memory analytics copy so it can't overwrite what was just restored.
+  resetAnalyticsCache();
   return true;
 }
 
