@@ -1368,7 +1368,7 @@ function HomeScreen({ grade, setGrade, setScreen, progress, sessionMinutes, setS
         ) : <div />}
         <div className="flex items-center gap-2">
           <button onClick={onSwitchSubject} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}>
-            <ArrowLeftRight size={14} /> Math
+            <ArrowLeftRight size={14} /> All Subjects
           </button>
           <button onClick={() => setScreen("report")} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}>
             <BarChart3 size={14} /> Progress
@@ -4054,7 +4054,7 @@ function MathHomeScreen({ grade, setGrade, setScreen, progress, sessionMinutes, 
         ) : <div />}
         <div className="flex items-center gap-2">
           <button onClick={onSwitchSubject} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#E7ECFA", color: "#1B2430" }}>
-            <ArrowLeftRight size={14} /> Reading
+            <ArrowLeftRight size={14} /> All Subjects
           </button>
           <button onClick={() => setScreen("report")} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#E7ECFA", color: "#1B2430" }}>
             <BarChart3 size={14} /> Progress
@@ -5722,7 +5722,7 @@ function UpperSubjectHome({ onExit, onSwitchToGrades }) {
     <div className="max-w-md mx-auto px-5 pt-8 pb-10">
       <div className="flex items-center justify-between mb-6">
         <button onClick={onExit} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}>
-          <ArrowLeftRight size={14} /> K-2 Subjects
+          <ArrowLeftRight size={14} /> All Subjects
         </button>
       </div>
       <div className="text-center mb-8">
@@ -6148,6 +6148,9 @@ function UpperSpeedRound({ subject, grade, onBack, onExit }) {
   return (
     <div className="max-w-md mx-auto pb-10">
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "2px solid #EEE6D6" }}>
+        <button onClick={onBack} className="kbtn flex items-center gap-1.5 font-bold text-sm px-3 py-2 rounded-full" style={{ color: "#2B2250", background: "#EEE6D6" }}>
+          <ArrowLeft size={16} /> Back
+        </button>
         <div className="text-xs font-black" style={{ color: "#2B2250" }}>Score: {score}</div>
         <div className="text-xs font-black" style={{ color: "#D98551" }}>⏱ {timeLeft}s</div>
       </div>
