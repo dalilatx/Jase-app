@@ -6682,22 +6682,33 @@ function CombinedApp() {
 // { value } (or { value: null } if nothing's saved yet), set()
 // takes a string, list() returns { keys: [...] }.
 function makeCloudStorage(childId) {
+  // Keys whose read failed (a network/server error, not "nothing saved yet").
+  // The screens above treat a failed read like a fresh start, so letting them
+  // write that key would replace the child's real saved progress with a
+  // near-empty copy. Writes to these keys are skipped until a read succeeds.
+  const unreadable = new Set();
   return {
     async get(key) {
-      try {
-        const { data, error } = await supabase
-          .from("app_data")
-          .select("value")
-          .eq("child_id", childId)
-          .eq("key", key)
-          .maybeSingle();
-        if (error || !data) return { value: null };
-        return { value: data.value };
-      } catch (e) {
-        return { value: null };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const { data, error } = await supabase
+            .from("app_data")
+            .select("value")
+            .eq("child_id", childId)
+            .eq("key", key)
+            .maybeSingle();
+          if (!error) {
+            unreadable.delete(key);
+            return { value: data ? data.value : null };
+          }
+        } catch (e) {}
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 600));
       }
+      unreadable.add(key);
+      return { value: null };
     },
     async set(key, value) {
+      if (unreadable.has(key)) return false;
       try {
         const { error } = await supabase
           .from("app_data")
