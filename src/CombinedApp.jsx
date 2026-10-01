@@ -740,13 +740,20 @@ function upperCards(subject, grade) {
   return out;
 }
 
+// Answer texts from these cards, skipping repeats (two cards can share an
+// answer, like "12") so a question never shows the same choice twice.
+function uniqueAnswers(cards, exclude) {
+  const seen = new Set([exclude]);
+  return cards.map((c) => c.a).filter((a) => !seen.has(a) && seen.add(a));
+}
+
 function buildUpperQuestions(cards, count) {
   const pool = shuffle(cards).slice(0, count);
   return pool.map((card) => {
     const others = cards.filter((c) => c.a !== card.a && c.q !== card.q);
     const same = card.topicId ? others.filter((c) => c.topicId === card.topicId) : others;
     const rest = card.topicId ? others.filter((c) => c.topicId !== card.topicId) : [];
-    const distractors = [...shuffle(same), ...shuffle(rest)].slice(0, 3).map((c) => c.a);
+    const distractors = uniqueAnswers([...shuffle(same), ...shuffle(rest)], card.a).slice(0, 3);
     const options = shuffle([card.a, ...distractors]);
     return { ...card, options, correctIndex: options.indexOf(card.a) };
   });
@@ -760,7 +767,7 @@ function buildUpperReviewQuestions(askCards, distractorPool) {
     const others = distractorPool.filter((c) => c.a !== card.a && c.q !== card.q);
     const same = card.topicId ? others.filter((c) => c.topicId === card.topicId) : others;
     const rest = card.topicId ? others.filter((c) => c.topicId !== card.topicId) : [];
-    const distractors = [...shuffle(same), ...shuffle(rest)].slice(0, 3).map((c) => c.a);
+    const distractors = uniqueAnswers([...shuffle(same), ...shuffle(rest)], card.a).slice(0, 3);
     const options = shuffle([card.a, ...distractors]);
     return { ...card, options, correctIndex: options.indexOf(card.a) };
   });
@@ -6480,7 +6487,9 @@ function UpperSection({ onSwitchSubject }) {
 
   function markPracticed(topicId, correctCount, total) {
     const key = upperKey(subject, grade, topicId);
-    const next = { ...progress, [key]: Array.from({ length: correctCount }, (_, i) => i) };
+    // Keep the best result so a weaker practice run never lowers saved progress.
+    const best = Math.max(correctCount, (progress[key] || []).length);
+    const next = { ...progress, [key]: Array.from({ length: best }, (_, i) => i) };
     saveProgress(next);
   }
 
