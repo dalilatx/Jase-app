@@ -9,21 +9,16 @@ import { supabase } from "./supabaseClient";
 
 // --- Shared sound effects (Web Audio, no external assets, no TTS dependency) ---
 // --- Live AI tutor helpers (shared by reading & math sections) ---
+// Goes through the "ai-tutor" Supabase Edge Function (supabase/functions/ai-tutor),
+// which holds the API key server-side and only answers signed-in parents.
+// Returns the reply text, or null if the tutor couldn't answer.
 async function askClaude(prompt, maxTokens) {
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: maxTokens || 700,
-        messages: [{ role: "user", content: prompt }],
-      }),
+    const { data, error } = await supabase.functions.invoke("ai-tutor", {
+      body: { prompt, maxTokens: maxTokens || 700 },
     });
-    if (!response.ok) return null;
-    const data = await response.json();
-    const text = (data.content || []).map((b) => b.text || "").join("\n").trim();
-    return text || null;
+    if (error || !data) return null;
+    return (typeof data.text === "string" && data.text.trim()) || null;
   } catch (e) {
     return null;
   }
