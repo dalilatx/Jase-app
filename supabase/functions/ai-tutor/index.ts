@@ -44,17 +44,38 @@ function json(body: unknown, status = 200) {
   });
 }
 
-Deno.serve(async (req) => {
+// The whole handler is one more try/catch deeper than it looks: everything
+// below runs inside handleRequest, called from a try/catch in Deno.serve.
+// This matters because an exception thrown BEFORE we build our first
+// Response (e.g. a transient Supabase auth hiccup) would otherwise produce
+// a bare error page with no CORS header. The browser can't read a response
+// without that header, so it reports a generic "can't reach the server" —
+// hiding the real reason. Wrapping everything means every exit path,
+// including a crash we didn't anticipate, comes back as readable JSON.
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // These are injected automatically for every Supabase Edge Function.
+    // Seeing this means the function is running somewhere unusual.
+    return json({ error: "Server misconfigured (missing SUPABASE_URL/SUPABASE_ANON_KEY)" }, 500);
+  }
+
   // Only signed-in parents may use the tutor.
   const authHeader = req.headers.get("Authorization") ?? "";
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData?.user) return json({ error: "Not signed in" }, 401);
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData?.user) return json({ error: "Not signed in" }, 401);
+  } catch (err) {
+    console.error("Couldn't verify the signed-in user:", err);
+    return json({ error: "Couldn't verify sign-in — try again in a moment" }, 502);
+  }
 
   let body: { prompt?: unknown; maxTokens?: unknown; schema?: unknown };
   try {
@@ -117,5 +138,16 @@ Deno.serve(async (req) => {
     }
     console.error("Unexpected error:", err);
     return json({ error: "AI request failed" }, 500);
+  }
+}
+
+Deno.serve(async (req) => {
+  try {
+    return await handleRequest(req);
+  } catch (err) {
+    // Final safety net: whatever broke, still answer with CORS headers so
+    // the browser shows the real reason instead of a generic network error.
+    console.error("Unhandled error in ai-tutor:", err);
+    return json({ error: "The AI server hit an unexpected error — check the Edge Function logs" }, 500);
   }
 });
