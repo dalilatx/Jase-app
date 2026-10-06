@@ -63,10 +63,14 @@ function playChime(correct) {
 
 // --- Shared app-wide settings: text size, dyslexia-friendly spacing, calm game mode ---
 const SETTINGS_KEY = "combined-app-settings";
-let appSettings = { fontScale: "normal", dyslexiaSpacing: false, calmMode: false };
+const DEFAULT_APP_SETTINGS = { fontScale: "normal", dyslexiaSpacing: false, calmMode: false };
+let appSettings = { ...DEFAULT_APP_SETTINGS };
 function getCalmMode() { return appSettings.calmMode; }
 
 async function loadAppSettings() {
+  // Start from defaults each time so a newly picked child doesn't inherit
+  // the previous child's settings.
+  appSettings = { ...DEFAULT_APP_SETTINGS };
   try {
     const res = await window.storage.get(SETTINGS_KEY);
     if (res && res.value) appSettings = { ...appSettings, ...JSON.parse(res.value) };
@@ -118,26 +122,38 @@ const emptyAnalytics = () => ({
   snapshots: [],      // [{ date, readingMastered, mathMastered }]
 });
 
-let analyticsCache = null;
+// The cache belongs to the storage (i.e. the child) that loaded it. Switching
+// kids or families swaps window.storage, so a cache from the old one must never
+// be reused — otherwise one child's stats get saved into another child's record.
+// Caching the promise (not the result) also stops two quick answers from each
+// loading their own copy and the second save erasing the first.
+let analyticsPromise = null;
+let analyticsStore = null;
 
-async function loadAnalytics() {
-  if (analyticsCache) return analyticsCache;
-  let data = emptyAnalytics();
-  try {
-    const res = await window.storage.get(ANALYTICS_KEY);
-    if (res && res.value) data = { ...data, ...JSON.parse(res.value) };
-  } catch (e) {}
-  analyticsCache = data;
-  return data;
+function loadAnalytics() {
+  const store = window.storage;
+  if (!analyticsPromise || analyticsStore !== store) {
+    analyticsStore = store;
+    analyticsPromise = (async () => {
+      let data = emptyAnalytics();
+      try {
+        const res = await store.get(ANALYTICS_KEY);
+        if (res && res.value) data = { ...data, ...JSON.parse(res.value) };
+      } catch (e) {}
+      return data;
+    })();
+  }
+  return analyticsPromise;
 }
-async function saveAnalytics(data) {
-  analyticsCache = data;
-  try { await window.storage.set(ANALYTICS_KEY, JSON.stringify(data)); } catch (e) {}
+function resetAnalyticsCache() { analyticsPromise = null; analyticsStore = null; }
+async function saveAnalytics(data, store) {
+  try { await store.set(ANALYTICS_KEY, JSON.stringify(data)); } catch (e) {}
 }
 async function bumpAnalytics(mutator) {
+  const store = window.storage;
   const data = await loadAnalytics();
   mutator(data);
-  await saveAnalytics(data);
+  await saveAnalytics(data, store);
 }
 
 function logAnswer(correct) {
@@ -724,13 +740,20 @@ function upperCards(subject, grade) {
   return out;
 }
 
+// Answer texts from these cards, skipping repeats (two cards can share an
+// answer, like "12") so a question never shows the same choice twice.
+function uniqueAnswers(cards, exclude) {
+  const seen = new Set([exclude]);
+  return cards.map((c) => c.a).filter((a) => !seen.has(a) && seen.add(a));
+}
+
 function buildUpperQuestions(cards, count) {
   const pool = shuffle(cards).slice(0, count);
   return pool.map((card) => {
     const others = cards.filter((c) => c.a !== card.a && c.q !== card.q);
     const same = card.topicId ? others.filter((c) => c.topicId === card.topicId) : others;
     const rest = card.topicId ? others.filter((c) => c.topicId !== card.topicId) : [];
-    const distractors = [...shuffle(same), ...shuffle(rest)].slice(0, 3).map((c) => c.a);
+    const distractors = uniqueAnswers([...shuffle(same), ...shuffle(rest)], card.a).slice(0, 3);
     const options = shuffle([card.a, ...distractors]);
     return { ...card, options, correctIndex: options.indexOf(card.a) };
   });
@@ -744,7 +767,7 @@ function buildUpperReviewQuestions(askCards, distractorPool) {
     const others = distractorPool.filter((c) => c.a !== card.a && c.q !== card.q);
     const same = card.topicId ? others.filter((c) => c.topicId === card.topicId) : others;
     const rest = card.topicId ? others.filter((c) => c.topicId !== card.topicId) : [];
-    const distractors = [...shuffle(same), ...shuffle(rest)].slice(0, 3).map((c) => c.a);
+    const distractors = uniqueAnswers([...shuffle(same), ...shuffle(rest)], card.a).slice(0, 3);
     const options = shuffle([card.a, ...distractors]);
     return { ...card, options, correctIndex: options.indexOf(card.a) };
   });
@@ -1345,7 +1368,7 @@ function HomeScreen({ grade, setGrade, setScreen, progress, sessionMinutes, setS
         ) : <div />}
         <div className="flex items-center gap-2">
           <button onClick={onSwitchSubject} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}>
-            <ArrowLeftRight size={14} /> Math
+            <ArrowLeftRight size={14} /> All Subjects
           </button>
           <button onClick={() => setScreen("report")} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}>
             <BarChart3 size={14} /> Progress
@@ -1632,7 +1655,9 @@ function SmartPracticeMode({ grade, pool, onMaster, onExit }) {
     const word = order[idx];
     if (typed.trim().toLowerCase() === word.toLowerCase()) {
       setStatus("correct");
-      onMaster(grade, word);
+      // The AI may suggest practice words that aren't on this grade's list;
+      // only list words count toward mastery (otherwise counts pass 100%).
+      if (WORD_LISTS[grade].includes(word)) onMaster(grade, word);
       playChime(true);
       speak("Great job!");
     } else {
@@ -3169,9 +3194,16 @@ function TrendChart({ snapshots, field, accent, label }) {
   );
 }
 
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function printReport(title, sections) {
   const w = window.open("", "_blank");
-  if (!w) return false;
+  if (!w) {
+    alert("Your browser blocked the printable summary window. Please allow pop-ups for this site and try again.");
+    return false;
+  }
   const html = `<!DOCTYPE html><html><head><title>${title}</title><meta charset="utf-8">
 <style>
 body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 24px;color:#1c2321;line-height:1.6}
@@ -3250,8 +3282,13 @@ function ProgressReport({ progress, onExit }) {
     const streakText = streakData ? `Current streak: ${streakData.currentStreak} days.` : "";
     const prompt = `You're writing a brief, warm weekly note to a parent about their young child's reading practice this week, like a teacher's note home. Data: ${summary}. ${streakText} In 3-4 sentences: what's going well, what still needs work, and one plain, practical suggestion for the coming week. Warm but honest, no fluff, speak directly to the parent.`;
     const reply = await askClaude(prompt, 400);
-    const note = { text: reply || "Couldn't generate this week's note — try again in a moment.", date: todayStr() };
     setWeeklyLoading(false);
+    if (!reply) {
+      // Show the error, but keep the last good note saved rather than overwriting it.
+      setWeeklyNote({ text: "Couldn't generate this week's note — try again in a moment.", date: todayStr(), failed: true });
+      return;
+    }
+    const note = { text: reply, date: todayStr() };
     setWeeklyNote(note);
     try { await window.storage.set(WEEKLY_NOTE_KEY, JSON.stringify(note)); } catch (e) {}
   }
@@ -3391,8 +3428,8 @@ function ProgressReport({ progress, onExit }) {
               <h2>Progress by Grade Level</h2><ul>${perGrade}</ul>
               <h2>Most Frequently Missed Words</h2>
               <ul>${hardest || "<li>None recorded yet.</li>"}</ul>
-              ${patternReport ? `<h2>Observed Patterns</h2><div class="note">${patternReport}</div>` : ""}
-              ${weeklyNote ? `<h2>Recent Summary</h2><div class="note">${weeklyNote.text}</div>` : ""}
+              ${patternReport ? `<h2>Observed Patterns</h2><div class="note">${escapeHtml(patternReport)}</div>` : ""}
+              ${weeklyNote && !weeklyNote.failed ? `<h2>Recent Summary</h2><div class="note">${escapeHtml(weeklyNote.text)}</div>` : ""}
               <h2>Note</h2>
               <p style="font-size:12px;color:#6b6259">This summary reflects in-app practice only and is not a diagnostic assessment.</p>
             `);
@@ -4031,7 +4068,7 @@ function MathHomeScreen({ grade, setGrade, setScreen, progress, sessionMinutes, 
         ) : <div />}
         <div className="flex items-center gap-2">
           <button onClick={onSwitchSubject} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#E7ECFA", color: "#1B2430" }}>
-            <ArrowLeftRight size={14} /> Reading
+            <ArrowLeftRight size={14} /> All Subjects
           </button>
           <button onClick={() => setScreen("report")} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#E7ECFA", color: "#1B2430" }}>
             <BarChart3 size={14} /> Progress
@@ -4517,7 +4554,7 @@ function EquationMatchMode({ grade, onExit }) {
   }
 
   function factSpeechFromLabel(label) {
-    return label.replace("+", " plus ").replace("-", " minus ").replace("×", " times ");
+    return label.replace("+", " plus ").replace("-", " minus ").replace("×", " times ").replace("÷", " divided by ");
   }
 
   const allMatched = matched.length === cards.length;
@@ -5018,6 +5055,7 @@ function EquationBuilderMode({ grade, onExit }) {
     if (item.text === "+") mathSpeak("plus");
     else if (item.text === "-") mathSpeak("minus");
     else if (item.text === "×") mathSpeak("times");
+    else if (item.text === "÷") mathSpeak("divided by");
     else if (item.text === "=") mathSpeak("equals");
     else mathSpeak(item.text);
   }
@@ -5098,9 +5136,21 @@ function EquationBuilderMode({ grade, onExit }) {
     });
   }
 
+  // Any arrangement of the tiles that is a true equation counts — e.g. both
+  // "2 + 3 = 5" and "3 + 2 = 5", or "5 = 2 + 3" — not just the stored order.
+  function isTrueEquation(tokens) {
+    if (tokens.length !== 5) return false;
+    let a, op, b, result;
+    if (tokens[3] === "=") [a, op, b, , result] = tokens;
+    else if (tokens[1] === "=") [result, , a, op, b] = tokens;
+    else return false;
+    if (!OP_WORD[op] || ![a, b, result].every((t) => /^\d+$/.test(t))) return false;
+    return computeAnswer(Number(a), op, Number(b)) === Number(result);
+  }
+
   function checkEquation() {
     const attempt = built.map((w) => w.text).join(" ");
-    if (attempt === answerText) {
+    if (attempt === answerText || isTrueEquation(built.map((w) => w.text))) {
       setStatus("correct");
       mathSpeak("Correct equation!");
     } else {
@@ -5585,6 +5635,8 @@ async function waImportBackup(payload) {
   for (const key of Object.keys(payload.data)) {
     try { await window.storage.set(key, payload.data[key]); } catch (e) {}
   }
+  // Drop the in-memory analytics copy so it can't overwrite what was just restored.
+  resetAnalyticsCache();
   return true;
 }
 
@@ -5684,7 +5736,7 @@ function UpperSubjectHome({ onExit, onSwitchToGrades }) {
     <div className="max-w-md mx-auto px-5 pt-8 pb-10">
       <div className="flex items-center justify-between mb-6">
         <button onClick={onExit} className="kbtn flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}>
-          <ArrowLeftRight size={14} /> K-2 Subjects
+          <ArrowLeftRight size={14} /> All Subjects
         </button>
       </div>
       <div className="text-center mb-8">
@@ -6110,6 +6162,9 @@ function UpperSpeedRound({ subject, grade, onBack, onExit }) {
   return (
     <div className="max-w-md mx-auto pb-10">
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "2px solid #EEE6D6" }}>
+        <button onClick={onBack} className="kbtn flex items-center gap-1.5 font-bold text-sm px-3 py-2 rounded-full" style={{ color: "#2B2250", background: "#EEE6D6" }}>
+          <ArrowLeft size={16} /> Back
+        </button>
         <div className="text-xs font-black" style={{ color: "#2B2250" }}>Score: {score}</div>
         <div className="text-xs font-black" style={{ color: "#D98551" }}>⏱ {timeLeft}s</div>
       </div>
@@ -6449,7 +6504,9 @@ function UpperSection({ onSwitchSubject }) {
 
   function markPracticed(topicId, correctCount, total) {
     const key = upperKey(subject, grade, topicId);
-    const next = { ...progress, [key]: Array.from({ length: correctCount }, (_, i) => i) };
+    // Keep the best result so a weaker practice run never lowers saved progress.
+    const best = Math.max(correctCount, (progress[key] || []).length);
+    const next = { ...progress, [key]: Array.from({ length: best }, (_, i) => i) };
     saveProgress(next);
   }
 
@@ -6606,6 +6663,13 @@ function CombinedApp() {
     setSettings({ ...next });
   }
 
+  // Nearly all text sizes are Tailwind rem classes, which follow the root
+  // <html> font size and ignore a wrapper's em size — so scale the root.
+  useEffect(() => {
+    document.documentElement.style.fontSize = settings.fontScale === "large" ? "108%" : "";
+    return () => { document.documentElement.style.fontSize = ""; };
+  }, [settings.fontScale]);
+
   function goSubjectPicker() { setSubject(null); setGlobalView(null); }
 
   if (!settingsLoaded) {
@@ -6616,11 +6680,10 @@ function CombinedApp() {
     );
   }
 
-  const fontScaleStyle = settings.fontScale === "large" ? { fontSize: "1.08em" } : {};
   const dyslexiaStyle = settings.dyslexiaSpacing ? { letterSpacing: "0.04em", wordSpacing: "0.12em" } : {};
 
   return (
-    <div style={{ ...fontScaleStyle, ...dyslexiaStyle }}>
+    <div style={dyslexiaStyle}>
       {globalView === "settings" && (
         <SettingsPanel settings={settings} onChange={updateSettings} onBack={() => setGlobalView(null)} />
       )}
@@ -6664,22 +6727,33 @@ function CombinedApp() {
 // { value } (or { value: null } if nothing's saved yet), set()
 // takes a string, list() returns { keys: [...] }.
 function makeCloudStorage(childId) {
+  // Keys whose read failed (a network/server error, not "nothing saved yet").
+  // The screens above treat a failed read like a fresh start, so letting them
+  // write that key would replace the child's real saved progress with a
+  // near-empty copy. Writes to these keys are skipped until a read succeeds.
+  const unreadable = new Set();
   return {
     async get(key) {
-      try {
-        const { data, error } = await supabase
-          .from("app_data")
-          .select("value")
-          .eq("child_id", childId)
-          .eq("key", key)
-          .maybeSingle();
-        if (error || !data) return { value: null };
-        return { value: data.value };
-      } catch (e) {
-        return { value: null };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const { data, error } = await supabase
+            .from("app_data")
+            .select("value")
+            .eq("child_id", childId)
+            .eq("key", key)
+            .maybeSingle();
+          if (!error) {
+            unreadable.delete(key);
+            return { value: data ? data.value : null };
+          }
+        } catch (e) {}
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 600));
       }
+      unreadable.add(key);
+      return { value: null };
     },
     async set(key, value) {
+      if (unreadable.has(key)) return false;
       try {
         const { error } = await supabase
           .from("app_data")
@@ -6711,8 +6785,10 @@ function makeCloudStorage(childId) {
 function AccountBar({ childName, onSwitchChild, onSignOut }) {
   return (
     <div
-      className="flex items-center justify-between px-4 py-2 text-sm"
-      style={{ background: "#FBF4E6", borderBottom: "1px solid #E7DCC4" }}
+      className="flex items-center justify-between pl-4 py-2 text-sm"
+      // Extra right padding keeps these links clear of the session timer badge
+      // that's pinned to the top-right corner during activities.
+      style={{ background: "#FBF4E6", borderBottom: "1px solid #E7DCC4", paddingRight: 104 }}
     >
       <div className="font-bold" style={{ color: "#1B2430" }}>{childName}'s learning</div>
       <div className="flex items-center gap-3">
@@ -6902,12 +6978,18 @@ function ChildPicker({ familyId, onPick }) {
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
   const [activeChild, setActiveChild] = useState(null);
+  const userIdRef = useRef(undefined);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      // This also fires for routine background events (the hourly token
+      // refresh, returning to the tab), so only reset the picked child when
+      // the signed-in account actually changes or signs out.
+      const newUserId = (newSession && newSession.user && newSession.user.id) || null;
+      if (userIdRef.current !== newUserId) setActiveChild(null);
+      userIdRef.current = newUserId;
       setSession(newSession);
-      setActiveChild(null); // signing out (or switching accounts) always resets the picked child
     });
     return () => listener.subscription.unsubscribe();
   }, []);
