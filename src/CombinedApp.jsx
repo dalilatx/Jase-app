@@ -8,6 +8,7 @@ import { supabase } from "./supabaseClient";
 import { PLACEMENT_ITEMS, PLACEMENT_SUBJECTS, PLACEMENT_GRADES, PASS_SCORE, startingGrade, nextGrade, workingLevel, gradeIndex } from "./curriculum/placement";
 import { SKILL_GRADES, SKILL_GRADE_LABEL, skillsFor } from "./curriculum/skillMap";
 import { VIDEO_SEEDS, isTrustedChannel, parseYouTubeId, youTubeSearchUrl } from "./curriculum/videos";
+import { ARCADE_GAMES, ArcadeGame } from "./games/Arcade";
 
 
 // --- Shared sound effects (Web Audio, no external assets, no TTS dependency) ---
@@ -5673,7 +5674,7 @@ const WA_BACKUP_KEYS = [
   STORAGE_KEY, MISSED_KEY, ACTIVITY_KEY, LAST_ACTIVITY_KEY, WEEKLY_NOTE_KEY,
   MATH_STORAGE_KEY, MATH_MISSED_KEY, MATH_ACTIVITY_KEY, MATH_LAST_ACTIVITY_KEY,
   STREAK_KEY, SPURTS_KEY, ANALYTICS_KEY, SETTINGS_KEY, PLACEMENT_KEY,
-  "class-progress", "school-day", "video-choices", "homework",
+  "class-progress", "school-day", "video-choices", "homework", "rewards",
 ];
 
 async function waExportBackup() {
@@ -7331,6 +7332,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
 
   async function submit() {
     const sticker = HOMEWORK_STICKERS[Math.floor(Math.random() * HOMEWORK_STICKERS.length)];
+    addCoins(5);
     update(item.id, { status: "done", doneDate: todayStr(), feeling, note: note.trim(), sticker, parentNote: undefined });
     playChime(true);
     setPhase("celebrate");
@@ -7531,6 +7533,7 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
   }
 
   async function finishClass(subject, grade, skill, result) {
+    addCoins(10 + (result.mastered ? 5 : 0));
     const attempts = { ...progress.attempts, [skill.id]: [...(progress.attempts[skill.id] || []), { date: todayStr(), score: result.score, total: result.total }].slice(-10) };
     const mastered = result.mastered ? { ...progress.mastered, [skill.id]: { date: todayStr(), score: result.score, total: result.total } } : progress.mastered;
     await saveProgress({ ...progress, attempts, mastered });
@@ -7963,19 +7966,267 @@ function PlacementTest({ onExit, onStartLearning }) {
   );
 }
 
-function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOpenPlacement, onOpenSchoolDay }) {
+// ===================== COINS & AVATAR =====================
+// Coins are earned everywhere (games, School Day classes, homework) and
+// spent in the avatar shop — the reward loop apps like Prodigy and Duolingo use.
+const REWARDS_KEY = "rewards";
+const AVATAR_ITEMS = {
+  character: [
+    { id: "kid", emoji: "🧒", cost: 0 }, { id: "fox", emoji: "🦊", cost: 20 }, { id: "panda", emoji: "🐼", cost: 30 },
+    { id: "robot", emoji: "🤖", cost: 40 }, { id: "astro", emoji: "🧑‍🚀", cost: 50 }, { id: "dino", emoji: "🦖", cost: 60 },
+    { id: "unicorn", emoji: "🦄", cost: 70 }, { id: "dragon", emoji: "🐉", cost: 100 },
+  ],
+  hat: [
+    { id: "none", emoji: "", cost: 0, label: "No hat" }, { id: "cap", emoji: "🧢", cost: 15 }, { id: "helmet", emoji: "⛑️", cost: 20 },
+    { id: "tophat", emoji: "🎩", cost: 25 }, { id: "grad", emoji: "🎓", cost: 40 }, { id: "crown", emoji: "👑", cost: 75 },
+  ],
+  pet: [
+    { id: "none", emoji: "", cost: 0, label: "No pet" }, { id: "dog", emoji: "🐶", cost: 20 }, { id: "cat", emoji: "🐱", cost: 20 },
+    { id: "turtle", emoji: "🐢", cost: 30 }, { id: "parrot", emoji: "🦜", cost: 35 }, { id: "octopus", emoji: "🐙", cost: 45 }, { id: "phoenix", emoji: "🐦‍🔥", cost: 90 },
+  ],
+  bg: [
+    { id: "sunny", color: "#FFE79A", cost: 0, label: "Sunny" }, { id: "ocean", color: "#8FD3F4", cost: 15, label: "Ocean" },
+    { id: "forest", color: "#8BC48A", cost: 15, label: "Forest" }, { id: "candy", color: "#F7A8C8", cost: 25, label: "Candy" },
+    { id: "lava", color: "#F4845F", cost: 30, label: "Lava" }, { id: "galaxy", color: "#4B3F8F", cost: 40, label: "Galaxy" },
+  ],
+};
+const AVATAR_SLOTS = [["character", "Character"], ["hat", "Hats"], ["pet", "Pets"], ["bg", "Backgrounds"]];
+const DEFAULT_REWARDS = { coins: 0, earned: 0, owned: ["character:kid", "hat:none", "pet:none", "bg:sunny"], equipped: { character: "kid", hat: "none", pet: "none", bg: "sunny" } };
+
+async function loadRewards() {
+  const saved = await readJsonKey(REWARDS_KEY, null);
+  return saved ? { ...DEFAULT_REWARDS, ...saved, equipped: { ...DEFAULT_REWARDS.equipped, ...(saved.equipped || {}) } } : { ...DEFAULT_REWARDS };
+}
+async function addCoins(amount) {
+  if (!amount) return null;
+  const r = await loadRewards();
+  const next = { ...r, coins: r.coins + amount, earned: (r.earned || 0) + amount };
+  await writeJsonKey(REWARDS_KEY, next);
+  return next;
+}
+function avatarItem(slot, id) { return AVATAR_ITEMS[slot].find((x) => x.id === id) || AVATAR_ITEMS[slot][0]; }
+
+function AvatarBadge({ equipped, size = 56 }) {
+  const e = equipped || DEFAULT_REWARDS.equipped;
+  const hat = avatarItem("hat", e.hat).emoji;
+  const pet = avatarItem("pet", e.pet).emoji;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: avatarItem("bg", e.bg).color, fontSize: size * 0.55 }}>{avatarItem("character", e.character).emoji}</div>
+      {hat && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -size * 0.28, fontSize: size * 0.4 }}>{hat}</div>}
+      {pet && <div className="absolute" style={{ right: -size * 0.12, bottom: -size * 0.08, fontSize: size * 0.36 }}>{pet}</div>}
+    </div>
+  );
+}
+
+function AvatarShop({ onExit }) {
+  const [rewards, setRewards] = useState(null);
+  const [slot, setSlot] = useState("character");
+  useEffect(() => { loadRewards().then(setRewards); }, []);
+  if (!rewards) return <div style={{ background: "#FAF8F4", minHeight: "100vh" }} className="flex items-center justify-center"><div className="font-bold" style={{ color: "#2B2250" }}>Loading...</div></div>;
+
+  async function save(next) { setRewards(next); await writeJsonKey(REWARDS_KEY, next); }
+  function choose(item) {
+    const key = `${slot}:${item.id}`;
+    if (rewards.owned.includes(key)) { save({ ...rewards, equipped: { ...rewards.equipped, [slot]: item.id } }); return; }
+    if (rewards.coins < item.cost) return;
+    playChime(true);
+    save({ ...rewards, coins: rewards.coins - item.cost, owned: [...rewards.owned, key], equipped: { ...rewards.equipped, [slot]: item.id } });
+  }
+
+  return (
+    <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+      <div className="max-w-md mx-auto pb-10">
+        <TopBar title="Avatar Shop" color="#2B2250" onExit={onExit} />
+        <div className="px-5 pt-8">
+          <div className="flex flex-col items-center mb-5">
+            <div className="mb-3 mt-2"><AvatarBadge equipped={rewards.equipped} size={110} /></div>
+            <div className="text-xl font-black" style={{ color: "#8B6F1D" }}>🪙 {rewards.coins} coins</div>
+            <div className="text-xs" style={{ color: "#8B8499" }}>Earn coins in games, classes and homework</div>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 mb-4">
+            {AVATAR_SLOTS.map(([key, label]) => (
+              <button key={key} onClick={() => setSlot(key)} className="kbtn py-2 rounded-xl font-black text-xs" style={{ background: slot === key ? "#2B2250" : "#EEE6D6", color: slot === key ? "#fff" : "#2B2250" }}>{label}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {AVATAR_ITEMS[slot].map((item) => {
+              const owned = rewards.owned.includes(`${slot}:${item.id}`);
+              const wearing = rewards.equipped[slot] === item.id;
+              const affordable = rewards.coins >= item.cost;
+              return (
+                <button key={item.id} onClick={() => choose(item)} className="kbtn rounded-2xl p-3 flex flex-col items-center gap-1" data-shop-item={`${slot}:${item.id}`}
+                  style={{ background: wearing ? "#E8B84B22" : "#fff", border: `2px solid ${wearing ? "#E8B84B" : "#EEE6D6"}`, opacity: owned || affordable ? 1 : 0.45 }}>
+                  {slot === "bg"
+                    ? <div className="w-10 h-10 rounded-full" style={{ background: item.color }} />
+                    : <div className="text-3xl h-10 flex items-center">{item.emoji || "✖️"}</div>}
+                  <div className="text-[11px] font-black" style={{ color: "#2B2250" }}>{item.label || ""}</div>
+                  <div className="text-[11px] font-bold" style={{ color: wearing ? "#4F8A6B" : "#8B6F1D" }}>{wearing ? "Wearing" : owned ? "Wear" : `🪙 ${item.cost}`}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================== GAME ARCADE =====================
+// Turns every kind of practice in the app into the arcade's question format
+// ({ q, choices, answer, say? }) so all five games work with all of it.
+function arcadeMathQuestions(grade) {
+  return factList(grade).map((f) => {
+    const decoys = new Set();
+    for (const d of shuffle([1, 2, 3, -1, -2, -3, 10, -10, 4, 5])) {
+      const v = f.answer + d;
+      if (v >= 0 && v !== f.answer) decoys.add(v);
+      if (decoys.size === 3) break;
+    }
+    const choices = shuffle([f.answer, ...decoys]).map(String);
+    return { q: `${factDisplay(f)} = ?`, say: `What is ${factSpeech(f)}?`, choices, answer: choices.indexOf(String(f.answer)) };
+  });
+}
+function arcadeWordQuestions(grade) {
+  const words = WORD_LISTS[grade];
+  return words.map((w) => {
+    const choices = shuffle([w, ...shuffle(words.filter((x) => x !== w)).slice(0, 3)]);
+    return { q: "Tap the word you hear 🔊", say: w, choices, answer: choices.indexOf(w) };
+  });
+}
+function arcadeCardQuestions(cards) {
+  return buildUpperQuestions(cards, cards.length).map((q) => ({ q: q.q, choices: q.options, answer: q.correctIndex }));
+}
+
+// Everything the child can play with right now: built-in sets plus every
+// lesson Ms. Bright has already written for them.
+async function loadArcadeSources() {
+  const sources = [];
+  ["K", "1", "2", "3", "4", "5"].forEach((g) => sources.push({ id: `math-${g}`, group: "Math Facts", label: GRADE_LABEL[g], questions: () => arcadeMathQuestions(g) }));
+  ["K", "1", "2", "3", "4", "5"].forEach((g) => sources.push({ id: `words-${g}`, group: "Sight Words (listening)", label: GRADE_LABEL[g], questions: () => arcadeWordQuestions(g) }));
+  Object.keys(UPPER_SUBJECTS).forEach((s) => UPPER_GRADES.forEach((g) => sources.push({ id: `upper-${s}-${g}`, group: "Upper Grades", label: `${UPPER_SUBJECTS[s].label} · ${UPPER_GRADE_LABEL[g]}`, questions: () => arcadeCardQuestions(upperCards(s, g)) })));
+  try {
+    const listed = await window.storage.list("upper:ai-lessons:");
+    for (const key of (listed && listed.keys) || []) {
+      const [, , subject, grade] = key.split(":");
+      const saved = await readJsonKey(key, {});
+      const cards = Object.entries(saved).flatMap(([topicId, l]) => (l.cards || []).map((c) => ({ ...c, topicId })));
+      if (cards.length >= 5 && UPPER_SUBJECTS[subject]) sources.push({ id: `upperai-${subject}-${grade}`, group: "Upper Grades", label: `${UPPER_SUBJECTS[subject].label} · ${SKILL_GRADE_LABEL[grade]}`, questions: () => arcadeCardQuestions(cards) });
+    }
+  } catch (e) {}
+  try {
+    const listed = await window.storage.list("class-lessons:");
+    for (const key of (listed && listed.keys) || []) {
+      const [, subject, grade] = key.split(":");
+      const saved = await readJsonKey(key, {});
+      const items = Object.values(saved).flatMap((l) => [...(l.weDo || []), ...(l.youDo || [])]).filter((it) => it.choices && it.choices.length >= 2 && it.choices.length <= 4);
+      if (items.length >= 5) sources.push({ id: `class-${subject}-${grade}`, group: "My School Day Lessons", label: `${CLASS_SUBJECT_LABEL[subject] || subject} · ${SKILL_GRADE_LABEL[grade]}`, questions: () => items.map((it) => ({ q: it.q, choices: it.choices, answer: it.answer })) });
+    }
+  } catch (e) {}
+  return sources;
+}
+
+function GameArcade({ onExit, onOpenShop }) {
+  const [sources, setSources] = useState(null);
+  const [sourceId, setSourceId] = useState(null);
+  const [gameId, setGameId] = useState(null);
+  const [questions, setQuestions] = useState(null);
+  const [coins, setCoins] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const [list, rewards, progress] = await Promise.all([loadArcadeSources(), loadRewards(), readJsonKey(CLASS_PROGRESS_KEY, { levels: {} })]);
+      setSources(list);
+      setCoins(rewards.coins);
+      // Start with something at their level: their School Day lessons, or math facts at their math grade.
+      const mathLevel = progress.levels && progress.levels.math;
+      const preferred = list.find((s) => s.group === "My School Day Lessons") || list.find((s) => s.id === `math-${mathLevel}`) || list[0];
+      setSourceId(preferred.id);
+    })();
+  }, []);
+
+  if (!sources) return <div style={{ background: "#FAF8F4", minHeight: "100vh" }} className="flex items-center justify-center"><div className="font-bold" style={{ color: "#2B2250" }}>Loading...</div></div>;
+
+  if (gameId && questions) {
+    return (
+      <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+        <style>{`@keyframes popIn { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } } .pop { animation: popIn 200ms ease-out; } .kbtn { transition: transform 100ms ease; } .kbtn:active { transform: scale(0.95); }`}</style>
+        <ArcadeGame gameId={gameId} questions={questions} speak={(t) => speak(t)} chime={playChime} calm={getCalmMode()}
+          onAnswer={(c) => recordActivity("arcade-activity", c)}
+          onReward={async (earned) => { const r = await addCoins(earned); if (r) setCoins(r.coins); }}
+          onExit={() => { setGameId(null); setQuestions(null); }} />
+      </div>
+    );
+  }
+
+  const source = sources.find((s) => s.id === sourceId);
+  const groups = [...new Set(sources.map((s) => s.group))];
+  function play(id) {
+    const qs = source.questions();
+    if (qs.length < 4) return;
+    setQuestions(qs);
+    setGameId(id);
+  }
+
+  return (
+    <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+      <div className="max-w-md mx-auto pb-10">
+        <TopBar title="Game Arcade" color="#2B2250" onExit={onExit} />
+        <div className="px-5 pt-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-lg font-black" style={{ color: "#8B6F1D" }}>🪙 {coins}</div>
+            <button onClick={onOpenShop} className="kbtn text-xs font-black px-3 py-2 rounded-full" style={{ background: "#E8B84B22", color: "#8B6F1D", border: "2px solid #E8B84B" }}>🛍️ Avatar Shop</button>
+          </div>
+
+          <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+            <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>What do you want to practice?</div>
+            <select value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="w-full text-sm font-bold py-2.5 px-3 rounded-xl outline-none" style={{ border: "2px solid #EEE6D6", color: "#2B2250", background: "#FAF8F4" }} data-source-picker>
+              {groups.map((g) => (
+                <optgroup key={g} label={g}>
+                  {sources.filter((s) => s.group === g).map((s) => <option key={s.id} value={s.id}>{g === "Math Facts" || g.startsWith("Sight") ? `${g} · ${s.label}` : s.label}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            {!sources.some((s) => s.group === "My School Day Lessons") && (
+              <div className="text-[11px] mt-2" style={{ color: "#8B8499" }}>Finish School Day classes to play games with your own lessons too!</div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {ARCADE_GAMES.map((g) => (
+              <button key={g.id} onClick={() => play(g.id)} className="kbtn w-full rounded-2xl p-4 flex items-center gap-4 text-left" style={{ background: "#fff", border: `2px solid ${g.color}` }}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-3xl" style={{ background: `${g.color}22` }}>{g.emoji}</div>
+                <div className="flex-1">
+                  <div className="font-black text-base" style={{ color: "#2B2250" }}>{g.title}</div>
+                  <div className="text-xs" style={{ color: "#8B8499" }}>{g.blurb}</div>
+                </div>
+                <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOpenPlacement, onOpenSchoolDay, onOpenArcade, onOpenShop }) {
   const [showBackup, setShowBackup] = useState(false);
   const [placement, setPlacement] = useState({});
-  useEffect(() => { loadPlacementResults().then(setPlacement); }, []);
+  const [rewards, setRewards] = useState(null);
+  useEffect(() => { loadPlacementResults().then(setPlacement); loadRewards().then(setRewards); }, []);
   return (
     <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
       <div className="max-w-md mx-auto px-5 pt-10 pb-10">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style={{ background: "#2B2250" }}>
-            <Sparkles color="#fff" size={30} />
-          </div>
+          <button onClick={onOpenShop} className="kbtn inline-flex mb-4 mt-3" aria-label="Avatar shop">
+            <AvatarBadge equipped={rewards && rewards.equipped} size={64} />
+          </button>
           <h1 className="text-3xl font-black" style={{ color: "#2B2250" }}>{childName || "Jase"}'s Learning World</h1>
           <p className="text-sm mt-1.5" style={{ color: "#8B8499" }}>What should we work on today?</p>
+          <button onClick={onOpenShop} className="kbtn inline-flex items-center gap-1.5 mt-3 text-xs font-black px-3 py-1.5 rounded-full" style={{ background: "#E8B84B22", color: "#8B6F1D", border: "2px solid #E8B84B" }}>
+            🪙 {rewards ? rewards.coins : 0} coins · 🛍️ Avatar Shop
+          </button>
         </div>
 
         <button onClick={onOpenSchoolDay} className="kbtn w-full rounded-2xl p-5 mb-3 flex items-center gap-4 text-left" style={{ background: "#2B2250" }}>
@@ -7985,6 +8236,15 @@ function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOp
             <div className="text-xs" style={{ color: "#C9C2D6" }}>Reading, Math, Science & Social Studies with Ms. Bright</div>
           </div>
           <ArrowRight size={20} color="#fff" />
+        </button>
+
+        <button onClick={onOpenArcade} className="kbtn w-full rounded-2xl p-5 mb-3 flex items-center gap-4 text-left" style={{ background: "#fff", border: "2px solid #E8B84B" }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-2xl" style={{ background: "#E8B84B22" }}>🎮</div>
+          <div className="flex-1">
+            <div className="font-black text-lg" style={{ color: "#2B2250" }}>Game Arcade</div>
+            <div className="text-xs" style={{ color: "#8B8499" }}>Tower Defense, Maze Chase, Racing & more — with any subject</div>
+          </div>
+          <ArrowRight size={20} style={{ color: "#C9C2D6" }} />
         </button>
 
         <div className="space-y-3 mb-6">
@@ -8056,7 +8316,8 @@ function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOp
 
 function CombinedApp({ childName }) {
   const [subject, setSubject] = useState(null); // null | "reading" | "math" | "upper"
-  const [globalView, setGlobalView] = useState(null); // null | "report" | "settings" | "placement" | "school"
+  const [globalView, setGlobalView] = useState(null); // null | "report" | "settings" | "placement" | "school" | "arcade" | "shop"
+  const [shopReturn, setShopReturn] = useState(null); // where the shop's Home button goes
   const [startAt, setStartAt] = useState(null); // { subject, grade } chosen from placement results
   const [settings, setSettings] = useState({ fontScale: "normal", dyslexiaSpacing: false, calmMode: false });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -8111,6 +8372,12 @@ function CombinedApp({ childName }) {
       {globalView === "report" && (
         <CombinedProgressReport onExit={() => setGlobalView(null)} />
       )}
+      {globalView === "arcade" && (
+        <GameArcade onExit={() => setGlobalView(null)} onOpenShop={() => { setShopReturn("arcade"); setGlobalView("shop"); }} />
+      )}
+      {globalView === "shop" && (
+        <AvatarShop onExit={() => { setGlobalView(shopReturn); setShopReturn(null); }} />
+      )}
       {globalView === "school" && (
         <SchoolDay childName={childName} onExit={() => setGlobalView(null)} onOpenPlacement={() => setGlobalView("placement")} />
       )}
@@ -8125,6 +8392,8 @@ function CombinedApp({ childName }) {
           onOpenSettings={() => setGlobalView("settings")}
           onOpenPlacement={() => setGlobalView("placement")}
           onOpenSchoolDay={() => setGlobalView("school")}
+          onOpenArcade={() => setGlobalView("arcade")}
+          onOpenShop={() => { setShopReturn(null); setGlobalView("shop"); }}
         />
       )}
       {globalView === null && subject === "reading" && (
