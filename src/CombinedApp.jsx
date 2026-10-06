@@ -412,8 +412,11 @@ const UPPER_SUBJECTS = {
   science: { label: "Science",        color: "#4F8A6B", tagline: "Life, earth & physical science" },
   social:  { label: "Social Studies", color: "#8E7CC3", tagline: "History, geography & civics" },
 };
-const UPPER_GRADES = ["4", "5"];
-const UPPER_GRADE_LABEL = { "4": "4th Grade", "5": "5th Grade" };
+const UPPER_GRADES = ["4", "5"]; // grades with the hand-written lessons below
+// 6th-12th come from the K-12 skill map (src/curriculum/skillMap.js); Ms. Bright
+// writes each of those lessons the first time it's opened, and it's saved.
+const UPPER_ALL_GRADES = ["4", "5", "6", "7", "8", "9", "10", "11", "12"];
+const UPPER_GRADE_LABEL = SKILL_GRADE_LABEL;
 
 const UPPER_CONTENT = {
   math: {
@@ -732,7 +735,7 @@ const UPPER_CONTENT = {
 
 function upperCards(subject, grade) {
   const out = [];
-  UPPER_CONTENT[subject][grade].forEach((t) =>
+  (UPPER_CONTENT[subject][grade] || []).forEach((t) =>
     t.cards.forEach((c) => out.push({ ...c, topicId: t.id, topicTitle: t.title })));
   return out;
 }
@@ -774,6 +777,38 @@ function findUpperCard(subject, grade, topicId, q) {
   if (!topic) return null;
   const card = topic.cards.find((c) => c.q === q);
   return card ? { ...card, topicId } : null;
+}
+
+// Lessons Ms. Bright has written for 6th-12th, saved per subject and grade:
+// { [skillId]: { lesson, cards: [{ q, a }], generatedAt } }
+function upperAiLessonsKey(subject, grade) { return `upper:ai-lessons:${subject}:${grade}`; }
+
+// The lesson list for a subject and grade: hand-written for 4th-5th, skill-map
+// topics (plus any lessons already written) for 6th-12th.
+function upperTopicsFor(subject, grade, aiLessons) {
+  if (UPPER_CONTENT[subject][grade]) return UPPER_CONTENT[subject][grade];
+  return skillsFor(subject, grade).map((sk) => ({ id: sk.id, title: sk.title, focus: sk.focus, ai: true, ...((aiLessons && aiLessons[sk.id]) || {}) }));
+}
+function cardsFromTopics(topics) {
+  const out = [];
+  topics.forEach((t) => (t.cards || []).forEach((c) => out.push({ ...c, topicId: t.id, topicTitle: t.title })));
+  return out;
+}
+
+async function generateUpperLesson(subject, grade, topic) {
+  const prompt = `Write a short lesson for a ${UPPER_GRADE_LABEL[grade]} student in ${UPPER_SUBJECTS[subject].label} on "${topic.title}" (${topic.focus}).
+
+Respond ONLY with JSON in exactly this shape: {"lesson": "...", "cards": [{"q": "...", "a": "..."}]}
+
+- "lesson": 120-180 words. Explain the idea in plain language, then walk through one worked example step by step. You may separate paragraphs with a blank line.
+- "cards": exactly 6 practice questions on this lesson. Each "q" is a clear, self-contained question. Each "a" is the correct answer in under 12 words. All six answers must be different from each other.`;
+  const parsed = extractJson(await askClaude(prompt, 1400));
+  if (!parsed || typeof parsed.lesson !== "string" || !Array.isArray(parsed.cards)) return null;
+  const cards = parsed.cards
+    .filter((c) => c && typeof c.q === "string" && typeof c.a === "string" && c.q.trim() && c.a.trim())
+    .map((c) => ({ q: c.q.trim(), a: c.a.trim() }));
+  if (parsed.lesson.trim().length < 40 || cards.length < 4) return null;
+  return { lesson: parsed.lesson.trim(), cards, generatedAt: todayStr() };
 }
 
 const SENTENCE_POOLS = {
@@ -5433,7 +5468,7 @@ function upperTotalForSubject(subject) {
 function upperMasteredForSubject(subject, upperProgress) {
   let count = 0;
   Object.keys(upperProgress).forEach((k) => {
-    if (k.startsWith(`${subject}:`)) count += (upperProgress[k] || []).length;
+    if (UPPER_GRADES.some((g) => k.startsWith(`${subject}:${g}:`))) count += (upperProgress[k] || []).length;
   });
   return count;
 }
@@ -5742,7 +5777,7 @@ function UpperSubjectHome({ onExit, onSwitchToGrades }) {
           <BookOpen color="#fff" size={28} />
         </div>
         <h1 className="text-2xl font-black" style={{ color: "#2B2250" }}>Upper Grades</h1>
-        <p className="text-sm mt-1" style={{ color: "#8B8499" }}>4th & 5th grade — pick a subject</p>
+        <p className="text-sm mt-1" style={{ color: "#8B8499" }}>4th through 12th grade — pick a subject</p>
       </div>
       <div className="space-y-3">
         {Object.entries(UPPER_SUBJECTS).map(([key, s]) => (
@@ -5762,14 +5797,20 @@ function UpperSubjectHome({ onExit, onSwitchToGrades }) {
   );
 }
 
-function UpperTopicList({ subject, grade, onOpenTopic, onExit, onModeSelect, progress, missedCount }) {
+// Games need enough practice cards to make good rounds.
+const UPPER_MIN_GAME_CARDS = 8;
+
+function UpperTopicList({ subject, grade, topics, cardCount, onOpenTopic, onExit, onModeSelect, progress, missedCount }) {
   const s = UPPER_SUBJECTS[subject];
-  const topics = UPPER_CONTENT[subject][grade];
+  const gamesReady = cardCount >= UPPER_MIN_GAME_CARDS;
   return (
     <div className="max-w-md mx-auto pb-10">
       <UpperTopBar title={`${s.label} · ${UPPER_GRADE_LABEL[grade]}`} color={s.color} onExit={onExit} />
       <div className="px-5 pt-5">
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        {!gamesReady && (
+          <div className="text-xs font-bold text-center mb-2" style={{ color: "#8B8499" }}>Open a couple of lessons to unlock the test and games.</div>
+        )}
+        <div className="grid grid-cols-2 gap-2 mb-2" style={{ opacity: gamesReady ? 1 : 0.4, pointerEvents: gamesReady ? "auto" : "none" }}>
           <button onClick={() => onModeSelect("test")} className="kbtn rounded-xl py-3 flex flex-col items-center gap-1 font-black text-xs" style={{ background: `${s.color}14`, color: s.color, border: `2px solid ${s.color}` }}>
             <ClipboardCheck size={18} /> Full Test
           </button>
@@ -5802,7 +5843,7 @@ function UpperTopicList({ subject, grade, onOpenTopic, onExit, onModeSelect, pro
                 </div>
                 <div className="flex-1">
                   <div className="font-black text-sm" style={{ color: "#2B2250" }}>{t.title}</div>
-                  <div className="text-xs" style={{ color: "#8B8499" }}>{doneCount > 0 ? `${doneCount}/${t.cards.length} practiced` : `${t.cards.length} practice cards`}</div>
+                  <div className="text-xs" style={{ color: "#8B8499" }}>{!t.cards ? "New lesson from Ms. Bright" : doneCount > 0 ? `${doneCount}/${t.cards.length} practiced` : `${t.cards.length} practice cards`}</div>
                 </div>
                 <ArrowRight size={16} style={{ color: "#C9C2D6" }} />
               </button>
@@ -5814,13 +5855,29 @@ function UpperTopicList({ subject, grade, onOpenTopic, onExit, onModeSelect, pro
   );
 }
 
-function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice }) {
+function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice, onLessonReady }) {
   const s = UPPER_SUBJECTS[subject];
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+  const [writeState, setWriteState] = useState(topic.lesson ? "ready" : "writing"); // writing | ready | error
+  const [attempt, setAttempt] = useState(0);
+
+  // 6th-12th lessons are written by Ms. Bright the first time they're opened.
+  useEffect(() => {
+    if (topic.lesson) { setWriteState("ready"); return; }
+    let live = true;
+    setWriteState("writing");
+    (async () => {
+      const written = await generateUpperLesson(subject, grade, topic);
+      if (!live) return;
+      if (written) { onLessonReady(topic.id, written); setWriteState("ready"); }
+      else setWriteState("error");
+    })();
+    return () => { live = false; };
+  }, [topic.id, attempt]); // eslint-disable-line
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -5840,6 +5897,28 @@ function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice }) 
     setMessages((m) => [...m, { role: "assistant", content: reply || "Sorry, I couldn't think of an answer just now — try asking again." }]);
   }
 
+  if (writeState !== "ready" || !topic.lesson) {
+    return (
+      <div className="max-w-md mx-auto pb-10">
+        <UpperTopBar title={topic.title} color={s.color} onExit={onExit} onBack={onBack} />
+        <div className="px-5 pt-10 text-center">
+          {writeState === "error" ? (
+            <div className="rounded-2xl p-5" style={{ background: "#fff", border: "2px solid #D98551" }}>
+              <div className="text-sm font-bold mb-2" style={{ color: "#D98551" }}>Ms. Bright couldn't write this lesson right now.</div>
+              <div className="text-xs mb-4" style={{ color: "#8B8499" }}>Check your connection and try again. If it keeps happening, a grown-up may need to finish the AI setup.</div>
+              <button onClick={() => setAttempt((n) => n + 1)} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: s.color }}>Try Again</button>
+            </div>
+          ) : (
+            <div className="rounded-2xl p-8" style={{ background: "#fff", border: `2px solid ${s.color}` }}>
+              <div className="text-4xl mb-3">✏️</div>
+              <div className="text-sm font-bold" style={{ color: "#8B8499" }}>Ms. Bright is writing your lesson on {topic.title}...</div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-md mx-auto pb-10">
       <UpperTopBar title={topic.title} color={s.color} onExit={onExit} onBack={onBack} />
@@ -5851,7 +5930,7 @@ function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice }) 
               <Volume2 size={14} />
             </button>
           </div>
-          <p className="text-sm leading-relaxed" style={{ color: "#2B2250" }}>{topic.lesson}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#2B2250" }}>{topic.lesson}</p>
         </div>
 
         {!chatOpen ? (
@@ -5860,14 +5939,14 @@ function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice }) 
               <MessageCircle size={18} color="#fff" />
             </div>
             <div className="flex-1">
-              <div className="text-white font-black text-sm">Ask the Tutor</div>
+              <div className="text-white font-black text-sm">Ask Ms. Bright</div>
               <div className="text-xs" style={{ color: "#C9C2D6" }}>Confused? Ask a question about this lesson</div>
             </div>
           </button>
         ) : (
           <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: "#fff", border: `2px solid ${s.color}` }}>
             <div className="px-4 py-3 flex items-center justify-between" style={{ background: `${s.color}14` }}>
-              <div className="font-black text-xs flex items-center gap-1.5" style={{ color: s.color }}><MessageCircle size={14} /> Ask the Tutor</div>
+              <div className="font-black text-xs flex items-center gap-1.5" style={{ color: s.color }}><MessageCircle size={14} /> Ask Ms. Bright</div>
               <button onClick={() => setChatOpen(false)} className="text-xs font-bold" style={{ color: "#8B8499" }}>Hide</button>
             </div>
             <div ref={scrollRef} className="px-4 py-3 space-y-2.5 overflow-y-auto" style={{ maxHeight: 260 }}>
@@ -5995,9 +6074,9 @@ function UpperPractice({ subject, grade, topic, onBack, onExit, onComplete, onMi
   );
 }
 
-function UpperTest({ subject, grade, onBack, onExit, onFinish, onMiss }) {
+function UpperTest({ subject, grade, cards, onBack, onExit, onFinish, onMiss }) {
   const s = UPPER_SUBJECTS[subject];
-  const [questions] = useState(() => buildUpperQuestions(upperCards(subject, grade), 12));
+  const [questions] = useState(() => buildUpperQuestions(cards || upperCards(subject, grade), 12));
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [picked, setPicked] = useState(null);
@@ -6094,7 +6173,7 @@ function UpperTest({ subject, grade, onBack, onExit, onFinish, onMiss }) {
   );
 }
 
-function UpperSpeedRound({ subject, grade, onBack, onExit }) {
+function UpperSpeedRound({ subject, grade, cards, onBack, onExit }) {
   const s = UPPER_SUBJECTS[subject];
   const ROUND = 60;
   const [phase, setPhase] = useState("intro");
@@ -6105,7 +6184,8 @@ function UpperSpeedRound({ subject, grade, onBack, onExit }) {
   const queueRef = useRef([]);
 
   function nextQuestion() {
-    if (queueRef.current.length === 0) queueRef.current = buildUpperQuestions(upperCards(subject, grade), upperCards(subject, grade).length);
+    const pool = cards || upperCards(subject, grade);
+    if (queueRef.current.length === 0) queueRef.current = buildUpperQuestions(pool, pool.length);
     setQ(queueRef.current.shift());
     setPicked(null);
   }
@@ -6187,11 +6267,11 @@ function UpperSpeedRound({ subject, grade, onBack, onExit }) {
   );
 }
 
-function UpperBalloonPop({ subject, grade, onBack, onExit }) {
+function UpperBalloonPop({ subject, grade, cards, onBack, onExit }) {
   const s = UPPER_SUBJECTS[subject];
   const calm = getCalmMode();
   const ROUND = calm ? 65 : 45;
-  const cardsAll = upperCards(subject, grade);
+  const cardsAll = cards || upperCards(subject, grade);
   const queueRef = useRef([]);
   const [phase, setPhase] = useState("intro");
   const [timeLeft, setTimeLeft] = useState(ROUND);
@@ -6290,10 +6370,10 @@ function UpperBalloonPop({ subject, grade, onBack, onExit }) {
   );
 }
 
-function UpperMemoryMatch({ subject, grade, onBack, onExit }) {
+function UpperMemoryMatch({ subject, grade, cards: sourceCards, onBack, onExit }) {
   const s = UPPER_SUBJECTS[subject];
   const PAIRS = 6;
-  const allCards = upperCards(subject, grade);
+  const allCards = sourceCards || upperCards(subject, grade);
   const queueRef = useRef([]);
   const [cards, setCards] = useState(() => buildDeck());
   const [flipped, setFlipped] = useState([]);
@@ -6366,7 +6446,7 @@ function UpperMemoryMatch({ subject, grade, onBack, onExit }) {
   );
 }
 
-function UpperNeedsPracticeMode({ subject, pool, onSolved, onExit, onBack }) {
+function UpperNeedsPracticeMode({ subject, pool, extraCards, onSolved, onExit, onBack }) {
   const s = UPPER_SUBJECTS[subject];
   const color = "#8E5A6B";
   // Resolve each missed item back to its full card (with distractors), and
@@ -6374,9 +6454,9 @@ function UpperNeedsPracticeMode({ subject, pool, onSolved, onExit, onBack }) {
   const [state] = useState(() => {
     const items = pool
       .filter((m) => m.subject === subject)
-      .map((m) => ({ ...m, card: findUpperCard(m.subject, m.grade, m.topicId, m.q) }))
+      .map((m) => ({ ...m, card: findUpperCard(m.subject, m.grade, m.topicId, m.q) || (m.q && m.a ? { q: m.q, a: m.a, topicId: m.topicId } : null) }))
       .filter((m) => m.card);
-    const distractorPool = [...UPPER_GRADES.flatMap((g) => upperCards(subject, g))];
+    const distractorPool = [...UPPER_GRADES.flatMap((g) => upperCards(subject, g)), ...(extraCards || [])];
     const questions = buildUpperReviewQuestions(items.map((m) => m.card), distractorPool)
       .map((q, i) => ({ ...q, grade: items[i].grade }));
     return { questions };
@@ -6448,10 +6528,13 @@ function UpperNeedsPracticeMode({ subject, pool, onSolved, onExit, onBack }) {
   );
 }
 
-function UpperSection({ onSwitchSubject }) {
-  const [subject, setSubject] = useState(null);
-  const [grade, setGrade] = useState("4");
-  const [view, setView] = useState("subjects"); // subjects | topics | lesson | practice | test | speed | balloons | memory
+function UpperSection({ onSwitchSubject, startAt }) {
+  // A placement result can open a subject and grade directly.
+  const startHere = startAt && UPPER_SUBJECTS[startAt.subject] && UPPER_ALL_GRADES.includes(startAt.grade) ? startAt : null;
+  const [subject, setSubject] = useState(startHere ? startHere.subject : null);
+  const [grade, setGrade] = useState(startHere ? startHere.grade : "4");
+  const [view, setView] = useState(startHere ? "topics" : "subjects"); // subjects | topics | lesson | practice | test | speed | balloons | memory
+  const [aiLessons, setAiLessons] = useState({});
   const [activeTopic, setActiveTopic] = useState(null);
   const [progress, setProgress] = useState({});
   const [missedPool, setMissedPool] = useState([]);
@@ -6508,6 +6591,31 @@ function UpperSection({ onSwitchSubject }) {
     saveProgress(next);
   }
 
+  // Load Ms. Bright's saved lessons for the open subject and grade.
+  useEffect(() => {
+    setAiLessons({});
+    if (!subject || UPPER_CONTENT[subject][grade]) return;
+    let live = true;
+    (async () => {
+      try {
+        const res = await window.storage.get(upperAiLessonsKey(subject, grade));
+        if (live && res && res.value) setAiLessons(JSON.parse(res.value));
+      } catch (e) {}
+    })();
+    return () => { live = false; };
+  }, [subject, grade]);
+
+  function saveAiLesson(topicId, written) {
+    setAiLessons((prev) => {
+      const next = { ...prev, [topicId]: written };
+      try { window.storage.set(upperAiLessonsKey(subject, grade), JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+    setActiveTopic((t) => (t && t.id === topicId ? { ...t, ...written } : t));
+  }
+
+  const topics = subject ? upperTopicsFor(subject, grade, aiLessons) : [];
+  const gradeCards = subject ? cardsFromTopics(topics) : [];
   const missedCountForSubject = subject ? missedPool.filter((m) => m.subject === subject).length : 0;
 
   function openSubject(key) { setSubject(key); setView("topics"); }
@@ -6535,8 +6643,8 @@ function UpperSection({ onSwitchSubject }) {
 
       {view === "subjects" && (
         <>
-          <div className="max-w-md mx-auto px-5 pt-5 flex justify-end gap-2">
-            {UPPER_GRADES.map((g) => (
+          <div className="max-w-md mx-auto px-5 pt-5 flex flex-wrap justify-end gap-2">
+            {UPPER_ALL_GRADES.map((g) => (
               <button key={g} onClick={() => setGrade(g)} className="kbtn px-3 py-1.5 rounded-full font-black text-xs" style={{ background: grade === g ? "#2B2250" : "#EEE6D6", color: grade === g ? "#fff" : "#2B2250" }}>
                 {UPPER_GRADE_LABEL[g]}
               </button>
@@ -6546,12 +6654,12 @@ function UpperSection({ onSwitchSubject }) {
         </>
       )}
       {view === "topics" && subject && (
-        <UpperTopicList subject={subject} grade={grade} progress={progress} onOpenTopic={openTopic}
+        <UpperTopicList subject={subject} grade={grade} topics={topics} cardCount={gradeCards.length} progress={progress} onOpenTopic={openTopic}
           onExit={goSubjects} onModeSelect={(m) => setView(m)} missedCount={missedCountForSubject} />
       )}
       {view === "lesson" && subject && activeTopic && (
         <UpperLesson subject={subject} grade={grade} topic={activeTopic} onBack={goTopics} onExit={goSubjects}
-          onDonePractice={() => setView("practice")} />
+          onDonePractice={() => setView("practice")} onLessonReady={saveAiLesson} />
       )}
       {view === "practice" && subject && activeTopic && (
         <UpperPractice subject={subject} grade={grade} topic={activeTopic} onBack={() => setView("lesson")} onExit={goSubjects}
@@ -6559,19 +6667,19 @@ function UpperSection({ onSwitchSubject }) {
           onMiss={addMiss} />
       )}
       {view === "test" && subject && (
-        <UpperTest subject={subject} grade={grade} onBack={goTopics} onExit={goSubjects} onFinish={() => {}} onMiss={addMiss} />
+        <UpperTest subject={subject} grade={grade} cards={gradeCards} onBack={goTopics} onExit={goSubjects} onFinish={() => {}} onMiss={addMiss} />
       )}
       {view === "speed" && subject && (
-        <UpperSpeedRound subject={subject} grade={grade} onBack={goTopics} onExit={goSubjects} />
+        <UpperSpeedRound subject={subject} grade={grade} cards={gradeCards} onBack={goTopics} onExit={goSubjects} />
       )}
       {view === "balloons" && subject && (
-        <UpperBalloonPop subject={subject} grade={grade} onBack={goTopics} onExit={goSubjects} />
+        <UpperBalloonPop subject={subject} grade={grade} cards={gradeCards} onBack={goTopics} onExit={goSubjects} />
       )}
       {view === "memory" && subject && (
-        <UpperMemoryMatch subject={subject} grade={grade} onBack={goTopics} onExit={goSubjects} />
+        <UpperMemoryMatch subject={subject} grade={grade} cards={gradeCards} onBack={goTopics} onExit={goSubjects} />
       )}
       {view === "needsPractice" && subject && (
-        <UpperNeedsPracticeMode subject={subject} pool={missedPool} onSolved={removeMiss} onBack={goTopics} onExit={goSubjects} />
+        <UpperNeedsPracticeMode subject={subject} pool={missedPool} extraCards={gradeCards} onSolved={removeMiss} onBack={goTopics} onExit={goSubjects} />
       )}
     </div>
   );
@@ -6855,7 +6963,7 @@ function SubjectPicker({ onSelect, onOpenReport, onOpenSettings, onOpenPlacement
             </div>
             <div className="flex-1">
               <div className="font-black text-lg" style={{ color: "#2B2250" }}>Upper Grades</div>
-              <div className="text-xs" style={{ color: "#8B8499" }}>4th-5th: Math, English, Science, Social Studies</div>
+              <div className="text-xs" style={{ color: "#8B8499" }}>4th-12th: Math, English, Science, Social Studies</div>
             </div>
             <ArrowRight size={20} style={{ color: "#C9C2D6" }} />
           </button>
