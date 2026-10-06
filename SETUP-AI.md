@@ -38,6 +38,11 @@ within a few seconds instead of "Couldn't reach the tutor".
 
 ## If it doesn't work
 
+When a lesson can't be written, the app now shows a **"For grown-ups:"** line
+under the error that says exactly what's wrong (for example "the ai-tutor
+function isn't in Supabase yet", "the AI key secret is missing", or "out of
+credit") and which step below fixes it.
+
 - **Still "Couldn't reach the tutor"**: in Supabase open **Edge Functions →
   ai-tutor → Logs** and look at the newest error.
   - `missing ANTHROPIC_API_KEY` → the secret name is misspelled (step 3).
