@@ -1,0 +1,446 @@
+// K-12 skill map: the skills taught in each subject at each grade, in the
+// order a school would teach them. Sequencing follows widely used US
+// standards (Common Core for math and English, NGSS-style science, and the
+// typical state social studies progression).
+//
+// Each skill: { id, title, focus }. `focus` is a one-line description used to
+// generate Ms. Bright's lesson for that skill, so it says what to teach.
+
+export const SKILL_GRADES = ["K", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+
+export const SKILL_GRADE_LABEL = {
+  K: "Kindergarten", "1": "1st Grade", "2": "2nd Grade", "3": "3rd Grade", "4": "4th Grade",
+  "5": "5th Grade", "6": "6th Grade", "7": "7th Grade", "8": "8th Grade", "9": "9th Grade",
+  "10": "10th Grade", "11": "11th Grade", "12": "12th Grade",
+};
+
+// [title, focus] pairs per grade; ids are derived below.
+const RAW = {
+  math: {
+    K: [
+      ["Counting to 100", "count by ones and tens to 100 and count objects one-to-one"],
+      ["Numbers 0-20", "read, write and compare numbers 0 to 20"],
+      ["Adding Within 10", "add within 10 using objects, fingers and drawings"],
+      ["Subtracting Within 10", "take away within 10 using objects and drawings"],
+      ["Shapes", "name and describe circles, squares, triangles, rectangles, cubes and spheres"],
+      ["Comparing & Measuring", "compare length, weight and size: longer, shorter, heavier, lighter"],
+    ],
+    "1": [
+      ["Addition & Subtraction to 20", "add and subtract within 20 using strategies like making ten"],
+      ["Word Problems to 20", "solve simple story problems within 20"],
+      ["Place Value: Tens & Ones", "understand two-digit numbers as tens and ones"],
+      ["Adding Two-Digit Numbers", "add a two-digit number and a one-digit number or a multiple of ten"],
+      ["Measuring Length", "measure and order objects by length with non-standard units"],
+      ["Telling Time", "tell time to the hour and half hour"],
+    ],
+    "2": [
+      ["Add & Subtract Within 100", "add and subtract fluently within 100, including regrouping"],
+      ["Place Value to 1,000", "read, write and compare three-digit numbers using hundreds, tens and ones"],
+      ["Money", "count coins and bills and solve money problems"],
+      ["Time to 5 Minutes", "tell time to the nearest five minutes, a.m. and p.m."],
+      ["Measuring in Inches & Centimeters", "measure lengths with rulers in inches and centimeters"],
+      ["Arrays & Equal Groups", "use arrays and equal groups as the start of multiplication"],
+    ],
+    "3": [
+      ["Multiplication Facts", "understand multiplication and learn facts through 10 x 10"],
+      ["Division Facts", "understand division as sharing and as the inverse of multiplication"],
+      ["Fractions on a Number Line", "understand unit fractions and place fractions on a number line"],
+      ["Area & Perimeter", "find area by counting squares and multiplying, and perimeter by adding sides"],
+      ["Rounding & Multi-Digit Add/Subtract", "round to tens and hundreds and add and subtract within 1,000"],
+      ["Two-Step Word Problems", "solve two-step problems with all four operations"],
+    ],
+    "4": [
+      ["Multi-Digit Multiplication", "multiply up to four digits by one digit and two digits by two digits"],
+      ["Long Division", "divide up to four-digit numbers by one-digit divisors, with remainders"],
+      ["Equivalent Fractions", "find equivalent fractions and compare fractions"],
+      ["Adding Fractions", "add and subtract fractions with like denominators, including mixed numbers"],
+      ["Decimals", "relate tenths and hundredths to fractions and compare decimals"],
+      ["Angles & Lines", "measure angles with a protractor and classify lines and shapes"],
+    ],
+    "5": [
+      ["Order of Operations", "evaluate expressions with parentheses using the order of operations"],
+      ["Fractions with Unlike Denominators", "add and subtract fractions with unlike denominators"],
+      ["Multiplying & Dividing Fractions", "multiply fractions and divide unit fractions by whole numbers"],
+      ["Decimal Operations", "add, subtract, multiply and divide decimals to hundredths"],
+      ["Volume", "find the volume of rectangular prisms"],
+      ["Coordinate Plane", "graph points in the first quadrant of the coordinate plane"],
+    ],
+    "6": [
+      ["Ratios & Rates", "understand ratios, unit rates and ratio tables"],
+      ["Dividing Fractions", "divide fractions by fractions"],
+      ["Negative Numbers", "understand integers, absolute value and the full coordinate plane"],
+      ["Expressions & Variables", "write and evaluate expressions with variables"],
+      ["One-Step Equations", "solve one-step equations and simple inequalities"],
+      ["Area, Surface Area & Volume", "find areas of triangles and polygons, surface area and volume"],
+      ["Statistics Basics", "find mean, median, mode and range and read data displays"],
+    ],
+    "7": [
+      ["Proportional Relationships", "recognize and represent proportional relationships and constant of proportionality"],
+      ["Percents", "solve percent problems including tax, tip, discount and percent change"],
+      ["Integer Operations", "add, subtract, multiply and divide positive and negative numbers"],
+      ["Two-Step Equations", "solve two-step equations and inequalities"],
+      ["Circles", "find circumference and area of circles"],
+      ["Probability", "find simple and compound probabilities"],
+    ],
+    "8": [
+      ["Exponents & Scientific Notation", "use exponent rules and scientific notation"],
+      ["Linear Equations", "solve multi-step linear equations, including variables on both sides"],
+      ["Slope & Graphing Lines", "find slope and graph lines in slope-intercept form"],
+      ["Systems of Equations", "solve systems of two linear equations by graphing and substitution"],
+      ["Functions", "understand functions and compare them in tables, graphs and equations"],
+      ["Pythagorean Theorem", "use the Pythagorean theorem to find missing sides and distances"],
+      ["Transformations", "translate, reflect, rotate and dilate figures"],
+    ],
+    "9": [
+      ["Algebra: Expressions & Equations", "simplify expressions and solve linear equations and inequalities"],
+      ["Linear Functions", "write, graph and interpret linear functions in context"],
+      ["Systems & Inequalities", "solve systems of equations and graph linear inequalities"],
+      ["Exponents & Polynomials", "use exponent rules and add, subtract and multiply polynomials"],
+      ["Factoring", "factor polynomials, including trinomials and difference of squares"],
+      ["Quadratic Equations", "solve quadratics by factoring, square roots and the quadratic formula"],
+      ["Exponential Functions", "model growth and decay with exponential functions"],
+    ],
+    "10": [
+      ["Geometry Foundations & Proof", "points, lines, angles and writing simple geometric proofs"],
+      ["Congruent Triangles", "prove triangles congruent with SSS, SAS, ASA and AAS"],
+      ["Similarity", "use similar figures and proportions to find unknown lengths"],
+      ["Right Triangle Trigonometry", "use sine, cosine and tangent to solve right triangles"],
+      ["Circles", "arcs, chords, tangents, inscribed angles and circle equations"],
+      ["Area & Volume of Solids", "surface area and volume of prisms, cylinders, pyramids, cones and spheres"],
+      ["Coordinate Geometry", "distance, midpoint and slope to prove properties of shapes"],
+    ],
+    "11": [
+      ["Functions & Their Graphs", "domain, range, transformations and inverses of functions"],
+      ["Polynomial Functions", "graph polynomials and find their zeros"],
+      ["Rational Expressions", "simplify and solve rational expressions and equations"],
+      ["Radicals & Complex Numbers", "simplify radicals and work with complex numbers"],
+      ["Exponents & Logarithms", "solve exponential and logarithmic equations"],
+      ["Sequences & Series", "arithmetic and geometric sequences and series"],
+      ["Statistics & Probability", "normal distributions, sampling and conditional probability"],
+    ],
+    "12": [
+      ["Trigonometric Functions", "the unit circle, radians and graphs of sine and cosine"],
+      ["Trigonometric Identities", "use identities to simplify expressions and solve equations"],
+      ["Vectors", "add vectors and find magnitude and direction"],
+      ["Limits", "understand limits informally and evaluate them"],
+      ["Introduction to Derivatives", "rate of change, the derivative and basic derivative rules"],
+      ["Statistics & Data Analysis", "regression, correlation and drawing conclusions from data"],
+      ["Personal Finance Math", "interest, loans, budgeting and credit"],
+    ],
+  },
+  english: {
+    K: [
+      ["Letter Names & Sounds", "recognize all upper- and lowercase letters and their most common sounds"],
+      ["Rhyming & Syllables", "hear rhymes and clap syllables in spoken words"],
+      ["Blending Sounds", "blend sounds to read simple consonant-vowel-consonant words"],
+      ["Sight Words", "read common high-frequency words by sight"],
+      ["Story Elements", "retell a story and name its characters and setting"],
+      ["Writing Letters & Words", "write letters and simple words using sounds they hear"],
+    ],
+    "1": [
+      ["Short Vowels & Blends", "read words with short vowels, consonant blends and digraphs"],
+      ["Long Vowels & Silent E", "read words with silent e and common vowel teams"],
+      ["Reading Fluency", "read grade-level text smoothly and accurately"],
+      ["Main Idea & Details", "identify the main topic and key details of a text"],
+      ["Sentences", "write complete sentences with capitals and end punctuation"],
+      ["Nouns & Verbs", "identify nouns and verbs in sentences"],
+    ],
+    "2": [
+      ["Vowel Teams & R-Controlled Vowels", "read words with vowel teams and ar, er, ir, or, ur"],
+      ["Prefixes & Suffixes", "use common prefixes and suffixes to read and understand words"],
+      ["Retelling & Lessons", "retell stories and find their central message or lesson"],
+      ["Text Features", "use headings, captions, glossaries and indexes"],
+      ["Adjectives & Adverbs", "use adjectives and adverbs to describe"],
+      ["Writing a Paragraph", "write a paragraph with a topic sentence and details"],
+    ],
+    "3": [
+      ["Multi-Syllable Words", "decode multi-syllable words and irregularly spelled words"],
+      ["Characters & Their Feelings", "describe characters' traits, motivations and feelings"],
+      ["Main Idea in Nonfiction", "find the main idea of an informational text and explain how details support it"],
+      ["Context Clues", "use context clues to figure out unknown words"],
+      ["Verb Tenses & Agreement", "use past, present and future tense and subject-verb agreement"],
+      ["Opinion Writing", "write an opinion with reasons and a conclusion"],
+    ],
+    "4": [
+      ["Theme & Summary", "determine the theme of a story and summarize it"],
+      ["Text Structure", "identify chronology, cause and effect, compare and contrast, and problem and solution"],
+      ["Figurative Language", "understand similes, metaphors, idioms and personification"],
+      ["Greek & Latin Roots", "use roots and affixes to understand vocabulary"],
+      ["Paragraph Writing", "write organized paragraphs with transitions"],
+      ["Grammar & Punctuation", "use commas, quotation marks and complete sentences correctly"],
+    ],
+    "5": [
+      ["Theme & Main Idea", "explain theme and main idea with evidence from the text"],
+      ["Point of View", "compare first- and third-person narration and how it shapes a story"],
+      ["Comparing Texts", "compare how two texts treat the same topic"],
+      ["Context Clues & Word Roots", "use context and roots to determine word meanings"],
+      ["Opinion & Argument Writing", "write an opinion piece with logically ordered reasons and evidence"],
+      ["Grammar & Conventions", "use conjunctions, prepositions and correct verb tense"],
+    ],
+    "6": [
+      ["Citing Textual Evidence", "cite evidence to support analysis of what a text says"],
+      ["Plot & Character Development", "describe how a plot unfolds and characters change"],
+      ["Central Idea", "find the central idea of a text and give an objective summary"],
+      ["Argument Writing", "write arguments with claims, reasons and relevant evidence"],
+      ["Pronouns", "use pronouns correctly, including case and clear reference"],
+      ["Vocabulary in Context", "determine meanings of words and phrases, including figurative language"],
+    ],
+    "7": [
+      ["Inferences & Evidence", "cite several pieces of evidence to support inferences"],
+      ["Theme Development", "analyze how a theme develops over the course of a text"],
+      ["Author's Purpose & Point of View", "determine an author's point of view and how they distinguish it from others"],
+      ["Evaluating Arguments", "trace and evaluate an argument and its claims"],
+      ["Research Writing", "gather information from sources, paraphrase and cite"],
+      ["Sentence Variety", "use simple, compound, complex and compound-complex sentences"],
+    ],
+    "8": [
+      ["Analyzing Dialogue & Events", "analyze how dialogue and events reveal character and drive the plot"],
+      ["Informational Text Structure", "analyze how paragraphs and sentences develop key ideas"],
+      ["Conflicting Information", "analyze where texts disagree on facts or interpretation"],
+      ["Argument with Counterclaims", "write arguments that acknowledge and respond to counterclaims"],
+      ["Verbals & Voice", "use gerunds, participles, infinitives and active and passive voice"],
+      ["Connotation & Word Choice", "analyze how word choice affects meaning and tone"],
+    ],
+    "9": [
+      ["Literary Analysis", "analyze complex characters, structure and theme in fiction"],
+      ["Analyzing Nonfiction", "analyze how an author develops ideas and claims"],
+      ["Rhetoric", "analyze rhetorical appeals and an author's use of rhetoric"],
+      ["Argumentative Essays", "write argumentative essays with valid reasoning and sufficient evidence"],
+      ["Phrases & Clauses", "use parallel structure and varied phrases and clauses"],
+      ["Poetry", "analyze poetic devices, form and meaning"],
+    ],
+    "10": [
+      ["World Literature", "analyze perspective and culture in literature from around the world"],
+      ["Author's Choices", "analyze how an author's structural choices create effects like tension or surprise"],
+      ["Evaluating Reasoning", "evaluate arguments and spot fallacious reasoning"],
+      ["Research Papers", "conduct research, synthesize sources and avoid plagiarism"],
+      ["Semicolons & Colons", "use semicolons, colons and other advanced punctuation"],
+      ["Shakespeare & Drama", "read and analyze drama, including Shakespeare"],
+    ],
+    "11": [
+      ["American Literature", "analyze foundational works of American literature"],
+      ["Founding Documents as Texts", "analyze the rhetoric and arguments of historical documents"],
+      ["Synthesis", "combine information from multiple sources into a coherent argument"],
+      ["Narrative & Personal Essays", "write narratives and personal essays, including college essays"],
+      ["Style & Usage", "apply style guides and resolve usage questions"],
+      ["Rhetorical Analysis", "analyze how authors use language to persuade"],
+    ],
+    "12": [
+      ["British & World Literature", "analyze major works of British and world literature"],
+      ["Critical Lenses", "read texts through historical, cultural and other critical perspectives"],
+      ["Advanced Argument", "write sophisticated arguments that weigh complex evidence"],
+      ["Research & Presentation", "conduct an extended research project and present findings"],
+      ["Workplace & Real-World Writing", "write resumes, cover letters, emails and reports"],
+      ["Media Literacy", "evaluate media sources for bias, credibility and purpose"],
+    ],
+  },
+  science: {
+    K: [
+      ["Living & Nonliving", "tell living things from nonliving things and what living things need"],
+      ["Weather", "observe and describe daily weather and seasons"],
+      ["Pushes & Pulls", "how pushes and pulls make things move, stop and change direction"],
+      ["Sunlight & Warmth", "how sunlight warms the Earth's surface"],
+      ["Animals & Their Homes", "how animals change their environment to meet their needs"],
+    ],
+    "1": [
+      ["Light & Sound", "how light lets us see and how vibrations make sound"],
+      ["Plant & Animal Parts", "how plant and animal parts help them survive"],
+      ["Parents & Offspring", "how young plants and animals are like their parents"],
+      ["Sun, Moon & Stars", "patterns of the sun, moon and stars in the sky"],
+      ["Day & Night", "why we have day and night and how daylight changes with seasons"],
+    ],
+    "2": [
+      ["Properties of Matter", "describe and sort materials by their properties"],
+      ["Heating & Cooling", "how heating and cooling change materials"],
+      ["Plants Need Water & Light", "what plants need to grow and how they are pollinated"],
+      ["Habitats", "compare the plants and animals living in different habitats"],
+      ["Earth's Changes", "how wind and water shape land quickly and slowly"],
+    ],
+    "3": [
+      ["Forces & Motion", "balanced and unbalanced forces and patterns of motion"],
+      ["Magnets", "how magnets attract and repel"],
+      ["Life Cycles", "life cycles of plants and animals"],
+      ["Traits & Inheritance", "inherited traits and how the environment affects them"],
+      ["Weather & Climate", "weather patterns, climate and reducing weather hazards"],
+    ],
+    "4": [
+      ["Energy & Motion", "kinetic and potential energy and how energy transfers"],
+      ["Waves & Information", "waves, sound, light and sending information"],
+      ["Plant & Animal Structures", "structures that help plants and animals survive"],
+      ["Earth's Changing Surface", "weathering, erosion and deposition"],
+      ["Natural Resources", "renewable and nonrenewable energy and their effects"],
+    ],
+    "5": [
+      ["Matter & Its Properties", "states of matter, mixtures and conservation of matter"],
+      ["Ecosystems & Food Webs", "producers, consumers, decomposers and energy flow"],
+      ["Earth's Systems & Water", "how the geosphere, hydrosphere, atmosphere and biosphere interact"],
+      ["Space & the Solar System", "the sun, stars, gravity and Earth's movement"],
+      ["Protecting Earth", "how people can protect Earth's resources and environment"],
+    ],
+    "6": [
+      ["Earth's Structure & Plate Tectonics", "Earth's layers, plate movement, earthquakes and volcanoes"],
+      ["Rocks & Minerals", "the rock cycle and how minerals form"],
+      ["Weather & the Atmosphere", "air masses, fronts and the water cycle"],
+      ["Climate", "what determines climate and how climate changes"],
+      ["The Scientific Method", "asking questions, forming hypotheses and running fair tests"],
+    ],
+    "7": [
+      ["Cells", "cell structure, organelles and the cell theory"],
+      ["Body Systems", "how human body systems work together"],
+      ["Photosynthesis & Respiration", "how plants make food and how organisms release energy"],
+      ["Genetics", "genes, heredity and Punnett squares"],
+      ["Ecosystems", "interactions, cycles of matter and biodiversity"],
+    ],
+    "8": [
+      ["Atoms & the Periodic Table", "atoms, elements and how the periodic table is organized"],
+      ["Chemical Reactions", "evidence of chemical reactions and conservation of mass"],
+      ["Forces & Newton's Laws", "Newton's three laws of motion"],
+      ["Energy", "forms of energy, transfer and conservation"],
+      ["Waves & Electromagnetism", "wave properties, the electromagnetic spectrum and electricity and magnetism"],
+    ],
+    "9": [
+      ["Biology: Chemistry of Life", "water, carbon and the molecules of life"],
+      ["Cell Processes", "cell transport, mitosis and cellular energy"],
+      ["DNA & Protein Synthesis", "DNA structure, replication and making proteins"],
+      ["Evolution", "natural selection, adaptation and evidence for evolution"],
+      ["Ecology", "populations, communities and human impact on ecosystems"],
+    ],
+    "10": [
+      ["Chemistry: Atomic Structure", "subatomic particles, isotopes and electron arrangement"],
+      ["Chemical Bonding", "ionic and covalent bonds and naming compounds"],
+      ["Balancing Equations", "balance chemical equations and classify reactions"],
+      ["Stoichiometry", "the mole and calculating amounts in reactions"],
+      ["Acids, Bases & Solutions", "pH, concentration and properties of solutions"],
+    ],
+    "11": [
+      ["Physics: Motion", "displacement, velocity, acceleration and motion graphs"],
+      ["Forces & Momentum", "Newton's laws, friction and conservation of momentum"],
+      ["Work, Energy & Power", "work, kinetic and potential energy and power"],
+      ["Electricity & Circuits", "current, voltage, resistance and Ohm's law"],
+      ["Waves, Sound & Light", "wave behavior, sound and optics"],
+    ],
+    "12": [
+      ["Environmental Science", "ecosystems, resources and human impact on the environment"],
+      ["Human Anatomy & Physiology", "organ systems and how the body maintains balance"],
+      ["Earth & Space Science", "the universe, stars and Earth's history"],
+      ["Scientific Research & Data", "designing experiments and analyzing real data"],
+      ["Science, Technology & Society", "how science shapes decisions about health, energy and technology"],
+    ],
+  },
+  social: {
+    K: [
+      ["Me & My Family", "families, traditions and how families are alike and different"],
+      ["Rules & Helpers", "why we have rules and the jobs of community helpers"],
+      ["Maps & Places", "what a map is and finding places near home"],
+      ["Needs & Wants", "the difference between needs and wants"],
+      ["Holidays & Symbols", "national holidays and symbols like the flag"],
+    ],
+    "1": [
+      ["Communities", "what a community is and how people work together"],
+      ["Past & Present", "how life has changed over time"],
+      ["Map Skills", "map keys, directions and globes"],
+      ["Goods & Services", "goods, services, producers and consumers"],
+      ["Good Citizens", "rights, responsibilities and being a good citizen"],
+    ],
+    "2": [
+      ["Local Government", "who makes decisions in a community and how"],
+      ["Landforms & Bodies of Water", "mountains, plains, rivers, lakes and oceans"],
+      ["Historical Figures", "people who made a difference in history"],
+      ["Economics at Home", "earning, saving, spending and making choices"],
+      ["Cultures Around the World", "how families live in different places"],
+    ],
+    "3": [
+      ["Our State & Region", "the geography and history of your state and region"],
+      ["Native American Nations", "the first peoples of North America and their cultures"],
+      ["Branches of Government", "the three branches of government"],
+      ["Communities Then & Now", "how communities grow and change"],
+      ["Natural Resources & Trade", "resources, trade and how people depend on each other"],
+    ],
+    "4": [
+      ["U.S. Regions & Geography", "the five U.S. regions and their landforms, climate and economy"],
+      ["Native American Cultures", "how Native American nations adapted to different regions"],
+      ["Early Explorers", "why Europeans explored the Americas and the effects of exploration"],
+      ["Government & Citizenship", "local, state and federal government and citizenship"],
+      ["State History", "key events and people in your state's history"],
+    ],
+    "5": [
+      ["Colonial America", "the thirteen colonies and life in each region"],
+      ["The American Revolution", "causes, key events and results of the Revolution"],
+      ["The Constitution", "the Constitution, three branches and the Bill of Rights"],
+      ["Westward Expansion", "the Louisiana Purchase, Manifest Destiny and the effects on Native nations"],
+      ["Slavery & the Civil War Begins", "slavery in the United States and the road to the Civil War"],
+    ],
+    "6": [
+      ["Early Humans", "how early humans lived and the shift to farming"],
+      ["Mesopotamia & Egypt", "the first civilizations of Mesopotamia and Egypt"],
+      ["Ancient India & China", "the civilizations, beliefs and inventions of ancient India and China"],
+      ["Ancient Greece", "Greek city-states, democracy and culture"],
+      ["Ancient Rome", "the Roman Republic and Empire and its legacy"],
+    ],
+    "7": [
+      ["The Fall of Rome & Byzantium", "the fall of Rome and the Byzantine Empire"],
+      ["Islamic Civilizations", "the rise of Islam and achievements of Islamic empires"],
+      ["Medieval Europe", "feudalism, the Church and life in the Middle Ages"],
+      ["African Kingdoms", "Ghana, Mali, Songhai and other African empires"],
+      ["Renaissance & Reformation", "the Renaissance, the Reformation and the Scientific Revolution"],
+      ["Civilizations of the Americas", "the Maya, Aztec and Inca"],
+    ],
+    "8": [
+      ["Founding the Nation", "the Revolution, the Articles of Confederation and the Constitution"],
+      ["The Early Republic", "Washington through Jackson and the growth of the nation"],
+      ["Sectionalism & Slavery", "how differences between North and South grew"],
+      ["The Civil War", "causes, key battles and the end of slavery"],
+      ["Reconstruction", "rebuilding the nation and the struggle for civil rights after the war"],
+    ],
+    "9": [
+      ["World Geography Skills", "maps, regions, population and how geography shapes life"],
+      ["Cultures & Religions of the World", "major world cultures and religions"],
+      ["Global Economics", "trade, development and globalization"],
+      ["Human-Environment Interaction", "how people use and change the environment"],
+      ["Current World Issues", "understanding major issues facing the world today"],
+    ],
+    "10": [
+      ["Revolutions & Nationalism", "political and industrial revolutions and the rise of nations"],
+      ["Imperialism", "European imperialism and its effects around the world"],
+      ["World War I", "causes, events and consequences of World War I"],
+      ["World War II", "causes, events and consequences of World War II"],
+      ["The Cold War & Today's World", "the Cold War, decolonization and the modern world"],
+    ],
+    "11": [
+      ["Industrialization & Immigration", "growth of industry, cities and immigration in the U.S."],
+      ["The Progressive Era & World War I", "reform movements and America's role in World War I"],
+      ["The 1920s & the Great Depression", "the Roaring Twenties, the Depression and the New Deal"],
+      ["World War II & the Cold War", "America in World War II and the Cold War"],
+      ["The Civil Rights Movement", "the struggle for civil rights and equality"],
+      ["Modern America", "America from the 1970s to today"],
+    ],
+    "12": [
+      ["Foundations of Government", "purposes of government and the principles of the Constitution"],
+      ["Congress, the President & the Courts", "how the three branches work and check each other"],
+      ["Rights & Responsibilities", "civil liberties, civil rights and civic participation"],
+      ["Elections & Voting", "political parties, campaigns and how to vote"],
+      ["Economics Basics", "supply and demand, markets and the role of government"],
+      ["Personal Finance", "budgeting, saving, credit and investing"],
+    ],
+  },
+};
+
+function slug(text) {
+  return text.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+export const SKILL_MAP = Object.fromEntries(
+  Object.entries(RAW).map(([subject, grades]) => [
+    subject,
+    Object.fromEntries(
+      Object.entries(grades).map(([grade, skills]) => [
+        grade,
+        skills.map(([title, focus]) => ({ id: `${subject}-${grade}-${slug(title)}`, title, focus })),
+      ])
+    ),
+  ])
+);
+
+export function skillsFor(subject, grade) {
+  return (SKILL_MAP[subject] && SKILL_MAP[subject][grade]) || [];
+}
