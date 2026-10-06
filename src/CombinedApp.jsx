@@ -7741,7 +7741,7 @@ function PlacementTest({ onExit, onStartLearning }) {
   }, [item]); // eslint-disable-line
 
   function readItem(it) {
-    speakSequence([it.say || it.q, ...it.options.map((o, i) => `Choice ${i + 1}: ${o}`), "Or tap: I don't know."], 0.85, 350);
+    speakSequence([it.say || it.q, ...it.options.map((o, i) => `Choice ${i + 1}: ${o}`), "Or choose: I don't know the answer."], 0.85, 350);
   }
 
   async function finish(finalHistory, finalMissed) {
@@ -7952,12 +7952,13 @@ function PlacementTest({ onExit, onStartLearning }) {
             {opt}
           </button>
         ))}
+        {/* Always the last choice, same size as the others, so it's never missed. */}
+        <button onClick={() => choose("idk")} className="kbtn w-full text-left px-4 py-3 rounded-xl font-black text-base"
+          style={{ background: picked === "idk" ? "#E8B84B55" : "#FFF6D6", border: "2px solid #E8B84B", color: "#2B2250" }}>
+          🤔 I don't know the answer
+        </button>
       </div>
-      <button onClick={() => choose("idk")} className="kbtn w-full mt-3 px-4 py-3 rounded-xl font-black text-base"
-        style={{ background: picked === "idk" ? "#EEE6D6" : "#FAF8F4", border: "2px dashed #C9C2D6", color: "#5B6B7A" }}>
-        🤔 I don't know
-      </button>
-      <p className="text-xs text-center mt-2" style={{ color: "#8B8499" }}>Not sure? Tapping “I don't know” is better than guessing.</p>
+      <p className="text-xs text-center mt-2" style={{ color: "#8B8499" }}>Don't understand the question, or not sure? Tap “I don't know the answer” — that's better than guessing.</p>
     </>
   );
 }
