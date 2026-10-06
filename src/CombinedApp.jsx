@@ -5638,7 +5638,7 @@ const WA_BACKUP_KEYS = [
   STORAGE_KEY, MISSED_KEY, ACTIVITY_KEY, LAST_ACTIVITY_KEY, WEEKLY_NOTE_KEY,
   MATH_STORAGE_KEY, MATH_MISSED_KEY, MATH_ACTIVITY_KEY, MATH_LAST_ACTIVITY_KEY,
   STREAK_KEY, SPURTS_KEY, ANALYTICS_KEY, SETTINGS_KEY, PLACEMENT_KEY,
-  "class-progress", "school-day", "video-choices",
+  "class-progress", "school-day", "video-choices", "homework",
 ];
 
 async function waExportBackup() {
@@ -7154,7 +7154,7 @@ function ClassLesson({ subject, grade, skill, color, onExit, onFinished }) {
             setSoloCorrect(total);
             if (qIdx + 1 < lesson.youDo.length) { setQIdx(qIdx + 1); return; }
             const mastered = total / lesson.youDo.length >= CLASS_MASTERY;
-            onFinished({ score: total, total: lesson.youDo.length, mastered });
+            onFinished({ score: total, total: lesson.youDo.length, mastered, homework: lesson.homework });
             setStep("done");
           }} />
       </>
@@ -7174,7 +7174,7 @@ function ClassLesson({ subject, grade, skill, color, onExit, onFinished }) {
       </div>
       {lesson.homework && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
-          <div className="font-black text-xs uppercase tracking-widest mb-1" style={{ color }}>Homework (away from the screen)</div>
+          <div className="font-black text-xs uppercase tracking-widest mb-1" style={{ color }}>✋ Homework (away from the screen) — saved to your Homework list</div>
           <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>{lesson.homework.title}</div>
           {lesson.homework.materials.length > 0 && <div className="text-xs mb-2" style={{ color: "#5B6B7A" }}><b>You'll need:</b> {lesson.homework.materials.join(", ")}</div>}
           <ol className="text-xs space-y-1 list-decimal pl-4" style={{ color: "#2B2250" }}>
@@ -7202,6 +7202,213 @@ function nextClassSkill(subject, level, mastered) {
   return null;
 }
 
+// ===================== HOMEWORK =====================
+// Each finished class assigns that lesson's hands-on, off-screen activity
+// (at most one open assignment per subject). Kids work through the steps,
+// tick "I finished!" and say how it went; a grown-up then checks it off.
+const HOMEWORK_KEY = "homework";
+const HOMEWORK_FEELINGS = [
+  { id: "easy", emoji: "😀", label: "Easy" },
+  { id: "okay", emoji: "😐", label: "Okay" },
+  { id: "hard", emoji: "😕", label: "Tricky" },
+];
+const HOMEWORK_STICKERS = ["🌟", "🚀", "🦄", "🐢", "🌈", "🦖", "🎨", "🏆", "🐙", "🍀", "🎈", "🦋"];
+
+// Adds the lesson's homework unless that subject already has open homework.
+function assignHomework(list, { subject, grade, skill, homework }) {
+  if (!homework) return list;
+  if (list.some((h) => h.subject === subject && h.status === "assigned")) return list;
+  return [...list, {
+    id: `${skill.id}-${Date.now()}`,
+    subject, grade, skillId: skill.id, skillTitle: skill.title,
+    title: homework.title, materials: homework.materials || [], steps: homework.steps || [],
+    assignedDate: todayStr(), status: "assigned",
+  }];
+}
+
+function HomeworkScreen({ homework, onSave, onExit }) {
+  const [openId, setOpenId] = useState(null);
+  const [checked, setChecked] = useState({}); // step index -> true, for the open assignment
+  const [phase, setPhase] = useState("steps"); // steps | reflect | celebrate
+  const [feeling, setFeeling] = useState(null);
+  const [note, setNote] = useState("");
+  const [reply, setReply] = useState(null);
+  const [parentMode, setParentMode] = useState(false);
+  const [retryNote, setRetryNote] = useState({});
+
+  const todo = homework.filter((h) => h.status === "assigned");
+  const waiting = homework.filter((h) => h.status === "done");
+  const finished = homework.filter((h) => h.status === "checked").slice(-10).reverse();
+  const stickers = homework.filter((h) => h.sticker).map((h) => h.sticker);
+  const item = homework.find((h) => h.id === openId);
+  const colorFor = (s) => (CLASS_PERIODS.find((p) => p.subject === s) || { color: "#2B2250" }).color;
+
+  function update(id, patch) { onSave(homework.map((h) => (h.id === id ? { ...h, ...patch } : h))); }
+
+  function openItem(h) { setOpenId(h.id); setChecked({}); setPhase("steps"); setFeeling(null); setNote(""); setReply(null); }
+
+  async function submit() {
+    const sticker = HOMEWORK_STICKERS[Math.floor(Math.random() * HOMEWORK_STICKERS.length)];
+    update(item.id, { status: "done", doneDate: todayStr(), feeling, note: note.trim(), sticker, parentNote: undefined });
+    playChime(true);
+    setPhase("celebrate");
+    speak("Awesome job finishing your homework!", 0.9);
+    if (note.trim()) {
+      const r = await askClaude(`A ${SKILL_GRADE_LABEL[item.grade]} student just finished a hands-on homework activity called "${item.title}" (about ${item.skillTitle}) and said: "${note.trim()}". Reply as Ms. Bright in 1-2 warm, specific sentences that celebrate what they did and connect it back to what they learned.`, 200);
+      if (r) { setReply(r); speak(r, 0.9); }
+    }
+  }
+
+  const shell = (title, children, back) => (
+    <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+      <div className="max-w-md mx-auto pb-10">
+        {back ? (
+          <div className="flex items-center justify-between px-4 py-3 sm:px-6" style={{ borderBottom: "2px solid #EEE6D6" }}>
+            <button onClick={back} className="kbtn flex items-center gap-1.5 font-bold text-sm px-3 py-2 rounded-full" style={{ color: "#2B2250", background: "#EEE6D6" }}><ArrowLeft size={16} /> Homework</button>
+            <div className="font-black text-base" style={{ color: "#2B2250" }}>{title}</div>
+            <div style={{ width: 76 }} />
+          </div>
+        ) : <TopBar title={title} color="#2B2250" onExit={onExit} />}
+        <div className="px-5 pt-5">{children}</div>
+      </div>
+    </div>
+  );
+
+  // --- one assignment ---
+  if (item) {
+    const color = colorFor(item.subject);
+    const back = () => setOpenId(null);
+    if (phase === "celebrate") {
+      return shell("Done!", (
+        <div className="text-center pt-4">
+          <div className="text-7xl mb-3 pop">{item.sticker || "🌟"}</div>
+          <h2 className="text-2xl font-black mb-1" style={{ color: "#2B2250" }}>Homework done!</h2>
+          <p className="text-sm mb-4" style={{ color: "#8B8499" }}>You earned a new sticker. A grown-up will take a look soon.</p>
+          {reply && <div className="text-sm p-4 rounded-2xl mb-4 text-left" style={{ background: `${color}14`, color: "#2B2250" }}><b>Ms. Bright:</b> {reply}</div>}
+          <button onClick={back} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color }}>Back to Homework</button>
+        </div>
+      ), back);
+    }
+    if (phase === "reflect") {
+      return shell("How did it go?", (
+        <>
+          <div className="font-black text-lg mb-3 text-center" style={{ color: "#2B2250" }}>How did “{item.title}” go?</div>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {HOMEWORK_FEELINGS.map((f) => (
+              <button key={f.id} onClick={() => setFeeling(f.id)} className="kbtn rounded-2xl py-3 flex flex-col items-center gap-1 font-black text-sm"
+                style={{ background: feeling === f.id ? `${color}22` : "#fff", border: `2px solid ${feeling === f.id ? color : "#EEE6D6"}`, color: "#2B2250" }}>
+                <span className="text-3xl">{f.emoji}</span>{f.label}
+              </button>
+            ))}
+          </div>
+          <div className="text-xs font-bold mb-1.5" style={{ color: "#8B8499" }}>Tell Ms. Bright what you did or found out (optional)</div>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="I found out that..."
+            className="w-full text-sm px-3 py-2.5 rounded-xl outline-none mb-4" style={{ border: "2px solid #EEE6D6", color: "#2B2250" }} />
+          <button onClick={submit} disabled={!feeling} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color, opacity: feeling ? 1 : 0.5 }}>Turn It In</button>
+        </>
+      ), () => setPhase("steps"));
+    }
+    const allChecked = item.steps.every((_, i) => checked[i]);
+    return shell(CLASS_SUBJECT_LABEL[item.subject], (
+      <>
+        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color }}>{item.skillTitle}</div>
+        <div className="flex items-start gap-2 mb-3">
+          <h1 className="text-xl font-black flex-1" style={{ color: "#2B2250" }}>{item.title}</h1>
+          <button onClick={() => speakSequence([item.title, item.materials.length ? `You'll need: ${item.materials.join(", ")}` : "", ...item.steps.map((s, i) => `Step ${i + 1}. ${s}`)].filter(Boolean), 0.85, 450)}
+            className="kbtn w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: `${color}22`, color }}><Volume2 size={16} /></button>
+        </div>
+        {item.parentNote && <div className="text-sm p-3 rounded-xl mb-3" style={{ background: "#E8B84B22", color: "#2B2250" }}><b>Note from your grown-up:</b> {item.parentNote}</div>}
+        <div className="rounded-2xl p-3 mb-4 text-sm font-bold flex items-center gap-2" style={{ background: "#2B2250", color: "#fff" }}>📵 Put the screen down and use your hands! Come back when you're done.</div>
+        {item.materials.length > 0 && (
+          <div className="rounded-2xl p-4 mb-3" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+            <div className="font-black text-xs uppercase tracking-widest mb-1.5" style={{ color }}>You'll need</div>
+            <div className="flex flex-wrap gap-1.5">{item.materials.map((m) => <span key={m} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: `${color}14`, color: "#2B2250" }}>{m}</span>)}</div>
+          </div>
+        )}
+        <div className="space-y-2 mb-4">
+          {item.steps.map((st, i) => (
+            <button key={i} onClick={() => setChecked((c) => ({ ...c, [i]: !c[i] }))} className="kbtn w-full text-left rounded-xl p-3 flex items-start gap-3"
+              style={{ background: checked[i] ? "#6FAE8B18" : "#fff", border: `2px solid ${checked[i] ? "#6FAE8B" : "#EEE6D6"}` }}>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-black" style={{ background: checked[i] ? "#6FAE8B" : "#EEE6D6", color: checked[i] ? "#fff" : "#2B2250" }}>{checked[i] ? "✓" : i + 1}</span>
+              <span className="text-sm" style={{ color: "#2B2250", textDecoration: checked[i] ? "line-through" : "none" }}>{st}</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={() => setPhase("reflect")} disabled={!allChecked} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color, opacity: allChecked ? 1 : 0.5 }}>
+          {allChecked ? "I Finished!" : "Check off each step as you do it"}
+        </button>
+      </>
+    ), back);
+  }
+
+  // --- grown-up review ---
+  if (parentMode) {
+    return shell("Grown-up Check", (
+      <>
+        <p className="text-xs mb-4" style={{ color: "#8B8499" }}>Look over what was turned in. “Great job” checks it off; “Try again” sends it back with your note.</p>
+        {waiting.length === 0 && <div className="text-sm font-bold text-center py-6" style={{ color: "#8B8499" }}>Nothing waiting to be checked.</div>}
+        <div className="space-y-3">
+          {waiting.map((h) => {
+            const f = HOMEWORK_FEELINGS.find((x) => x.id === h.feeling);
+            return (
+              <div key={h.id} className="rounded-2xl p-4" style={{ background: "#fff", border: `2px solid ${colorFor(h.subject)}` }}>
+                <div className="text-xs font-black uppercase tracking-widest" style={{ color: colorFor(h.subject) }}>{CLASS_SUBJECT_LABEL[h.subject]} · {h.doneDate}</div>
+                <div className="font-black text-sm mb-1" style={{ color: "#2B2250" }}>{h.title}</div>
+                {f && <div className="text-xs mb-1" style={{ color: "#5B6B7A" }}>Felt: {f.emoji} {f.label}</div>}
+                {h.note && <div className="text-xs mb-2 italic" style={{ color: "#5B6B7A" }}>“{h.note}”</div>}
+                <input value={retryNote[h.id] || ""} onChange={(e) => setRetryNote((n) => ({ ...n, [h.id]: e.target.value }))} placeholder="Note (only needed for Try again)"
+                  className="w-full text-xs px-3 py-2 rounded-lg outline-none mb-2" style={{ border: "1.5px solid #EEE6D6", color: "#2B2250" }} />
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => update(h.id, { status: "checked", checkedDate: todayStr() })} className="kbtn py-2 rounded-xl font-black text-xs text-white" style={{ background: "#6FAE8B" }}>⭐ Great Job</button>
+                  <button onClick={() => update(h.id, { status: "assigned", parentNote: (retryNote[h.id] || "").trim() || "Let's give this one more try!" })} className="kbtn py-2 rounded-xl font-black text-xs" style={{ background: "#EEE6D6", color: "#2B2250" }}>Try Again</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    ), () => setParentMode(false));
+  }
+
+  // --- list ---
+  return shell("Homework", (
+    <>
+      <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+        <div className="font-black text-sm mb-1.5" style={{ color: "#2B2250" }}>My Sticker Book ({stickers.length})</div>
+        <div className="text-2xl tracking-wide" style={{ minHeight: 32 }}>{stickers.length ? stickers.join(" ") : <span className="text-xs font-bold" style={{ color: "#C9C2D6" }}>Finish homework to earn stickers!</span>}</div>
+      </div>
+      <div className="text-xs font-black uppercase tracking-widest mb-2.5" style={{ color: "#8B8499" }}>To do ({todo.length})</div>
+      {todo.length === 0 && <div className="text-sm font-bold mb-5" style={{ color: "#8B8499" }}>All caught up! Finish a class to get new homework.</div>}
+      <div className="space-y-2.5 mb-5">
+        {todo.map((h) => (
+          <button key={h.id} onClick={() => openItem(h)} className="kbtn w-full rounded-2xl p-4 flex items-center gap-3 text-left" style={{ background: "#fff", border: `2px solid ${colorFor(h.subject)}` }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg" style={{ background: `${colorFor(h.subject)}18` }}>✋</div>
+            <div className="flex-1">
+              <div className="font-black text-sm" style={{ color: "#2B2250" }}>{h.title}</div>
+              <div className="text-xs" style={{ color: "#8B8499" }}>{CLASS_SUBJECT_LABEL[h.subject]}{h.parentNote ? " · sent back to try again" : h.assignedDate !== todayStr() ? ` · from ${h.assignedDate}` : " · new today"}</div>
+            </div>
+            <ArrowRight size={16} style={{ color: "#C9C2D6" }} />
+          </button>
+        ))}
+      </div>
+      {waiting.length > 0 && (
+        <div className="text-xs font-bold mb-5" style={{ color: "#8B8499" }}>⏳ {waiting.length} turned in, waiting for a grown-up to check</div>
+      )}
+      {finished.length > 0 && (
+        <>
+          <div className="text-xs font-black uppercase tracking-widest mb-2" style={{ color: "#8B8499" }}>Checked off</div>
+          <div className="space-y-1.5 mb-5">
+            {finished.map((h) => <div key={h.id} className="text-sm" style={{ color: "#2B2250" }}>{h.sticker || "⭐"} {h.title}</div>)}
+          </div>
+        </>
+      )}
+      <button onClick={() => setParentMode(true)} className="kbtn w-full py-3 rounded-xl font-black text-sm" style={{ background: "#EEE6D6", color: "#2B2250" }}>
+        Grown-ups: Check Homework{waiting.length ? ` (${waiting.length})` : ""}
+      </button>
+    </>
+  ));
+}
+
 function SchoolDay({ childName, onExit, onOpenPlacement }) {
   const [progress, setProgress] = useState(null);
   const [day, setDay] = useState(null);
@@ -7209,14 +7416,18 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
   const [open, setOpen] = useState(null); // { subject, grade, skill, color }
   const [onBreak, setOnBreak] = useState(false);
   const [changing, setChanging] = useState(null); // subject whose level is being changed
+  const [homework, setHomework] = useState([]);
+  const [showHomework, setShowHomework] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const [p, d, pl] = await Promise.all([
+      const [p, d, pl, hw] = await Promise.all([
         readJsonKey(CLASS_PROGRESS_KEY, { levels: {}, mastered: {}, attempts: {} }),
         readJsonKey(SCHOOL_DAY_KEY, null),
         loadPlacementResults(),
+        readJsonKey(HOMEWORK_KEY, []),
       ]);
+      setHomework(Array.isArray(hw) ? hw : []);
       // Starting levels come from the placement test: Math from Math, the
       // rest from Reading (science and social studies are read, too).
       const fromReading = (pl.reading && pl.reading.level) || null;
@@ -7230,6 +7441,7 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
   }, []);
 
   async function saveProgress(next) { setProgress(next); await writeJsonKey(CLASS_PROGRESS_KEY, next); }
+  async function saveHomework(next) { setHomework(next); await writeJsonKey(HOMEWORK_KEY, next); }
 
   function setLevel(subject, grade) {
     saveProgress({ ...progress, levels: { ...progress.levels, [subject]: grade } });
@@ -7243,10 +7455,16 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
     const nextDay = { ...day, done: { ...day.done, [subject]: { skillId: skill.id, title: skill.title, score: result.score, total: result.total } } };
     setDay(nextDay);
     await writeJsonKey(SCHOOL_DAY_KEY, nextDay);
+    const withHomework = assignHomework(homework, { subject, grade, skill, homework: result.homework });
+    if (withHomework !== homework) await saveHomework(withHomework);
   }
 
   if (!progress || !day) {
     return <div style={{ background: "#FAF8F4", minHeight: "100vh" }} className="flex items-center justify-center"><div style={{ color: "#2B2250" }} className="font-bold">Loading...</div></div>;
+  }
+
+  if (showHomework) {
+    return <HomeworkScreen homework={homework} onSave={saveHomework} onExit={() => setShowHomework(false)} />;
   }
 
   if (open) {
@@ -7328,6 +7546,21 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
                 </React.Fragment>
               );
             })}
+            {(() => {
+              const due = homework.filter((h) => h.status === "assigned").length;
+              const toCheck = homework.filter((h) => h.status === "done").length;
+              return (
+                <button onClick={() => setShowHomework(true)} className="kbtn w-full rounded-2xl p-4 flex items-center gap-3 text-left" style={{ background: "#fff", border: "2px solid #E8B84B" }}>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-xl" style={{ background: "#E8B84B22" }}>✋</div>
+                  <div className="flex-1">
+                    <div className="text-xs font-black uppercase tracking-widest" style={{ color: "#B5893A" }}>Period 5 · Homework</div>
+                    <div className="font-black text-sm" style={{ color: "#2B2250" }}>{due ? `${due} hands-on activit${due === 1 ? "y" : "ies"} to do` : "No homework right now"}</div>
+                    <div className="text-xs" style={{ color: "#8B8499" }}>{toCheck ? `${toCheck} waiting for a grown-up to check` : "Off-screen activities from today's classes"}</div>
+                  </div>
+                  <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
+                </button>
+              );
+            })()}
           </div>
         </div>
       </div>
