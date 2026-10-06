@@ -5,6 +5,8 @@ import {
   ListOrdered, Flame, BarChart3, Clock, ArrowLeftRight, MessageCircle, Send, RefreshCw, Smile, FileText
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
+import { PLACEMENT_ITEMS, PLACEMENT_SUBJECTS, PLACEMENT_GRADES, PASS_SCORE, startingGrade, nextGrade, workingLevel } from "./curriculum/placement";
+import { SKILL_GRADE_LABEL, skillsFor } from "./curriculum/skillMap";
 
 
 // --- Shared sound effects (Web Audio, no external assets, no TTS dependency) ---
@@ -956,6 +958,7 @@ const SPURTS_KEY = "combined-app-spurts";
 const MISSED_KEY = "reading-app-missed";
 const ACTIVITY_KEY = "reading-app-activity";
 const LAST_ACTIVITY_KEY = "reading-app-last-activity";
+const PLACEMENT_KEY = "placement-results";
 const emptyProgress = () => ({ K: { mastered: [], lastTest: null }, "1": { mastered: [], lastTest: null }, "2": { mastered: [], lastTest: null }, "3": { mastered: [], lastTest: null }, "4": { mastered: [], lastTest: null }, "5": { mastered: [], lastTest: null } });
 
 function todayStr() {
@@ -975,9 +978,9 @@ const STRETCHES = [
   "Shake out your hands and wiggle your fingers.",
 ];
 
-function ReadingSection({ onSwitchSubject }) {
+function ReadingSection({ onSwitchSubject, startGrade }) {
   const [screen, setScreen] = useState("home");
-  const [grade, setGrade] = useState("K");
+  const [grade, setGrade] = useState(startGrade && WORD_LISTS[startGrade] ? startGrade : "K");
   const [progress, setProgress] = useState(emptyProgress());
   const [loaded, setLoaded] = useState(false);
   const [sessionMinutes, setSessionMinutes] = useState(15);
@@ -3705,9 +3708,9 @@ const MATH_STRETCHES = [
   "Shake out your hands and wiggle your fingers.",
 ];
 
-function MathSection({ onSwitchSubject }) {
+function MathSection({ onSwitchSubject, startGrade }) {
   const [screen, setScreen] = useState("home");
-  const [grade, setGrade] = useState("K");
+  const [grade, setGrade] = useState(startGrade && FACTS[startGrade] ? startGrade : "K");
   const [progress, setProgress] = useState(mathEmptyProgress());
   const [loaded, setLoaded] = useState(false);
   const [sessionMinutes, setSessionMinutes] = useState(15);
@@ -5598,7 +5601,7 @@ function CombinedProgressReport({ onExit }) {
 const WA_BACKUP_KEYS = [
   STORAGE_KEY, MISSED_KEY, ACTIVITY_KEY, LAST_ACTIVITY_KEY, WEEKLY_NOTE_KEY,
   MATH_STORAGE_KEY, MATH_MISSED_KEY, MATH_ACTIVITY_KEY, MATH_LAST_ACTIVITY_KEY,
-  STREAK_KEY, SPURTS_KEY, ANALYTICS_KEY, SETTINGS_KEY,
+  STREAK_KEY, SPURTS_KEY, ANALYTICS_KEY, SETTINGS_KEY, PLACEMENT_KEY,
 ];
 
 async function waExportBackup() {
@@ -6574,8 +6577,244 @@ function UpperSection({ onSwitchSubject }) {
   );
 }
 
-function SubjectPicker({ onSelect, onOpenReport, onOpenSettings }) {
+// ===================== PLACEMENT TEST =====================
+// Finds the grade each child can actually work at in Math and Reading (see
+// src/curriculum/placement.js for how the adaptive staircase works).
+
+async function loadPlacementResults() {
+  try {
+    const res = await window.storage.get(PLACEMENT_KEY);
+    if (res && res.value) return JSON.parse(res.value);
+  } catch (e) {}
+  return {};
+}
+
+function gradeShortLabel(g) {
+  return g === "K" ? "Kinder" : `${g}${g === "1" ? "st" : g === "2" ? "nd" : g === "3" ? "rd" : "th"}`;
+}
+
+function PlacementTest({ onExit, onStartLearning }) {
+  const [phase, setPhase] = useState("intro"); // intro | quiz | result
+  const [subject, setSubject] = useState("math");
+  const [ageGrade, setAgeGrade] = useState("K");
+  const [results, setResults] = useState({});
+  const [grade, setGrade] = useState(null);
+  const [itemIdx, setItemIdx] = useState(0);
+  const [items, setItems] = useState([]);
+  const [score, setScore] = useState(0);
+  const [history, setHistory] = useState([]);
+  const [gaps, setGaps] = useState([]); // skills missed at grades not yet passed
+  const [gradeMissed, setGradeMissed] = useState([]); // skills missed at the current grade
+  const [picked, setPicked] = useState(null);
+  const [questionNumber, setQuestionNumber] = useState(1);
+
+  useEffect(() => {
+    (async () => {
+      const saved = await loadPlacementResults();
+      setResults(saved);
+      const last = saved.math || saved.reading;
+      if (last && last.ageGrade) setAgeGrade(last.ageGrade);
+    })();
+  }, []);
+
+  // Shuffle each question's choices, keeping track of the right one.
+  function prepareItems(subj, g) {
+    return shuffle(PLACEMENT_ITEMS[subj][g]).map((it) => {
+      const order = shuffle(it.options.map((_, i) => i));
+      return { ...it, options: order.map((i) => it.options[i]), answer: order.indexOf(it.answer) };
+    });
+  }
+
+  function begin(subj) {
+    const g = startingGrade(ageGrade);
+    setSubject(subj);
+    setGrade(g);
+    setItems(prepareItems(subj, g));
+    setItemIdx(0);
+    setScore(0);
+    setHistory([]);
+    setGaps([]);
+    setGradeMissed([]);
+    setPicked(null);
+    setQuestionNumber(1);
+    setPhase("quiz");
+  }
+
+  const item = phase === "quiz" ? items[itemIdx] : null;
+  const accent = PLACEMENT_SUBJECTS[subject].color;
+
+  // Read questions aloud automatically for early grades.
+  useEffect(() => {
+    if (item && ["K", "1", "2", "3"].includes(grade)) readItem(item);
+  }, [item]); // eslint-disable-line
+
+  function readItem(it) {
+    speakSequence([it.say || it.q, ...it.options.map((o, i) => `Choice ${i + 1}: ${o}`)], 0.85, 350);
+  }
+
+  async function finish(finalHistory, finalMissed) {
+    const level = workingLevel(finalHistory);
+    const entry = { level, ageGrade, date: todayStr(), history: finalHistory, missedSkills: [...new Set(finalMissed)] };
+    const next = { ...results, [subject]: entry };
+    setResults(next);
+    setPhase("result");
+    try { await window.storage.set(PLACEMENT_KEY, JSON.stringify(next)); } catch (e) {}
+  }
+
+  function choose(i) {
+    if (picked !== null) return;
+    setPicked(i);
+    const correct = i === item.answer;
+    recordActivity(subject === "math" ? MATH_ACTIVITY_KEY : ACTIVITY_KEY, correct);
+    const nextScore = score + (correct ? 1 : 0);
+    const nextGradeMissed = correct ? gradeMissed : [...gradeMissed, item.skill];
+    setTimeout(() => {
+      setPicked(null);
+      setQuestionNumber((n) => n + 1);
+      if (itemIdx + 1 < items.length) {
+        setItemIdx(itemIdx + 1);
+        setScore(nextScore);
+        setGradeMissed(nextGradeMissed);
+        return;
+      }
+      const nextHistory = [...history, { grade, score: nextScore }];
+      // Only skills missed at grades they didn't pass count as gaps.
+      const nextGaps = nextScore >= PASS_SCORE ? gaps : [...gaps, ...nextGradeMissed];
+      const g = nextGrade(nextHistory);
+      if (!g) { finish(nextHistory, nextGaps); return; }
+      setHistory(nextHistory);
+      setGaps(nextGaps);
+      setGradeMissed([]);
+      setGrade(g);
+      setItems(prepareItems(subject, g));
+      setItemIdx(0);
+      setScore(0);
+    }, 350);
+  }
+
+  const shell = (children) => (
+    <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+      <div className="max-w-md mx-auto pb-10">
+        <TopBar title="Placement Test" color="#2B2250" onExit={onExit} />
+        <div className="px-5 pt-6">{children}</div>
+      </div>
+    </div>
+  );
+
+  if (phase === "intro") {
+    return shell(
+      <>
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3" style={{ background: "#2B2250" }}>
+            <ClipboardCheck color="#fff" size={26} />
+          </div>
+          <h1 className="text-2xl font-black" style={{ color: "#2B2250" }}>Let's find your starting place</h1>
+          <p className="text-sm mt-1.5" style={{ color: "#8B8499" }}>
+            Ms. Bright will ask a few questions to see what you already know. It's okay not to know an answer — just pick your best guess!
+          </p>
+        </div>
+
+        <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+          <div className="font-black text-sm mb-1" style={{ color: "#2B2250" }}>Grade by age</div>
+          <div className="text-xs mb-3" style={{ color: "#8B8499" }}>For grown-ups: the grade they'd be in by age. The test starts a little below this and adjusts.</div>
+          <div className="grid grid-cols-5 gap-1.5">
+            {PLACEMENT_GRADES.map((g) => (
+              <button key={g} onClick={() => setAgeGrade(g)} className="kbtn py-2 rounded-lg font-black text-xs"
+                style={{ background: ageGrade === g ? "#2B2250" : "#EEE6D6", color: ageGrade === g ? "#fff" : "#2B2250" }}>
+                {gradeShortLabel(g)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {Object.entries(PLACEMENT_SUBJECTS).map(([key, s]) => (
+            <button key={key} onClick={() => begin(key)} className="kbtn w-full rounded-2xl p-4 flex items-center gap-4 text-left" style={{ background: "#fff", border: `2px solid ${s.color}` }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${s.color}22`, color: s.color }}>
+                {key === "math" ? <Calculator size={22} /> : <BookOpen size={22} />}
+              </div>
+              <div className="flex-1">
+                <div className="font-black text-base" style={{ color: "#2B2250" }}>{s.label} Placement</div>
+                <div className="text-xs" style={{ color: "#8B8499" }}>
+                  {results[key] ? `Last result: ${SKILL_GRADE_LABEL[results[key].level]} level (${results[key].date})` : "About 5-15 minutes"}
+                </div>
+              </div>
+              <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
+            </button>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  if (phase === "result") {
+    const r = results[subject];
+    const gaps = r.missedSkills || [];
+    const nextSkills = skillsFor(subject === "reading" ? "english" : "math", r.level).map((s) => s.title);
+    const other = subject === "math" ? "reading" : "math";
+    return shell(
+      <>
+        <div className="rounded-3xl p-6 mb-5 text-center pop" style={{ background: "#fff", border: `3px solid ${accent}` }}>
+          <Trophy size={44} style={{ color: "#E8B84B" }} className="mx-auto mb-2" />
+          <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: accent }}>{PLACEMENT_SUBJECTS[subject].label} starting level</div>
+          <div className="text-3xl font-black mb-2" style={{ color: "#2B2250" }}>{SKILL_GRADE_LABEL[r.level]}</div>
+          <p className="text-sm" style={{ color: "#8B8499" }}>Great work! This is where learning will be just right — not too easy, not too hard.</p>
+        </div>
+
+        {gaps.length > 0 && (
+          <div className="rounded-2xl p-4 mb-4" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+            <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>Skills to fill in first</div>
+            <div className="flex flex-wrap gap-1.5">
+              {gaps.map((g) => <span key={g} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: `${accent}14`, color: "#2B2250", border: `1px solid ${accent}55` }}>{g}</span>)}
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+          <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>Coming up at this level</div>
+          <ul className="text-xs space-y-1" style={{ color: "#5B6B7A" }}>
+            {nextSkills.map((t) => <li key={t}>• {t}</li>)}
+          </ul>
+        </div>
+
+        <button onClick={() => onStartLearning(subject, r.level)} className="kbtn w-full py-3 rounded-xl font-black text-white mb-2.5 flex items-center justify-center gap-2" style={{ background: accent }}>
+          Start Learning Here <ArrowRight size={16} />
+        </button>
+        <button onClick={() => begin(other)} className="kbtn w-full py-3 rounded-xl font-black mb-2.5" style={{ background: "#EEE6D6", color: "#2B2250" }}>
+          {results[other] ? `Retake ${PLACEMENT_SUBJECTS[other].label} Placement` : `Now Try ${PLACEMENT_SUBJECTS[other].label} Placement`}
+        </button>
+        <button onClick={onExit} className="kbtn w-full py-2.5 rounded-xl font-bold text-sm" style={{ color: "#8B8499" }}>Done</button>
+      </>
+    );
+  }
+
+  return shell(
+    <>
+      <div className="text-xs font-bold mb-4 text-center" style={{ color: "#8B8499" }}>Question {questionNumber}</div>
+      <div key={`${grade}-${itemIdx}`} className="pop rounded-2xl p-5 mb-4" style={{ background: "#fff", border: `2px solid ${accent}` }}>
+        <div className="flex items-start gap-2">
+          <div className="font-black text-lg flex-1" style={{ color: "#2B2250" }}>{item.q}</div>
+          <button onClick={() => readItem(item)} className="kbtn w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: `${accent}22`, color: accent }}>
+            <Volume2 size={16} />
+          </button>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {item.options.map((opt, i) => (
+          <button key={i} onClick={() => choose(i)} className="kbtn w-full text-left px-4 py-3 rounded-xl font-bold text-base"
+            style={{ background: picked === i ? `${accent}22` : "#fff", border: `2px solid ${picked === i ? accent : "#EEE6D6"}`, color: "#2B2250" }}>
+            {opt}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function SubjectPicker({ onSelect, onOpenReport, onOpenSettings, onOpenPlacement }) {
   const [showBackup, setShowBackup] = useState(false);
+  const [placement, setPlacement] = useState({});
+  useEffect(() => { loadPlacementResults().then(setPlacement); }, []);
   return (
     <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
       <div className="max-w-md mx-auto px-5 pt-10 pb-10">
@@ -6622,6 +6861,21 @@ function SubjectPicker({ onSelect, onOpenReport, onOpenSettings }) {
           </button>
         </div>
 
+        <button onClick={onOpenPlacement} className="kbtn w-full rounded-2xl p-4 mb-3 flex items-center gap-3 text-left" style={{ background: "#2B2250" }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
+            <ClipboardCheck size={18} color="#fff" />
+          </div>
+          <div className="flex-1">
+            <div className="text-white font-black text-sm">Placement Test</div>
+            <div className="text-xs" style={{ color: "#C9C2D6" }}>
+              {placement.math || placement.reading
+                ? [placement.math && `Math: ${SKILL_GRADE_LABEL[placement.math.level]}`, placement.reading && `Reading: ${SKILL_GRADE_LABEL[placement.reading.level]}`].filter(Boolean).join(" · ")
+                : "Find the right starting level for Math and Reading"}
+            </div>
+          </div>
+          <ArrowRight size={18} color="#fff" />
+        </button>
+
         <div className="grid grid-cols-2 gap-2.5 mb-3">
           <button onClick={onOpenReport} className="kbtn rounded-xl py-3 flex items-center justify-center gap-2 font-black text-sm" style={{ background: "#2B2250", color: "#fff" }}>
             <BarChart3 size={16} /> Overall Progress
@@ -6641,7 +6895,8 @@ function SubjectPicker({ onSelect, onOpenReport, onOpenSettings }) {
 
 function CombinedApp() {
   const [subject, setSubject] = useState(null); // null | "reading" | "math" | "upper"
-  const [globalView, setGlobalView] = useState(null); // null | "report" | "settings"
+  const [globalView, setGlobalView] = useState(null); // null | "report" | "settings" | "placement"
+  const [startAt, setStartAt] = useState(null); // { subject, grade } chosen from placement results
   const [settings, setSettings] = useState({ fontScale: "normal", dyslexiaSpacing: false, calmMode: false });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
@@ -6665,7 +6920,17 @@ function CombinedApp() {
     return () => { document.documentElement.style.fontSize = ""; };
   }, [settings.fontScale]);
 
-  function goSubjectPicker() { setSubject(null); setGlobalView(null); }
+  function goSubjectPicker() { setSubject(null); setGlobalView(null); setStartAt(null); }
+
+  // Send the child to the right section and grade for their placement level:
+  // K-5 math and reading have their own sections; 6th grade and up is in Upper Grades.
+  function startLearningAt(placementSubject, level) {
+    const lower = ["K", "1", "2", "3", "4", "5"].includes(level);
+    const section = lower ? (placementSubject === "math" ? "math" : "reading") : "upper";
+    setStartAt({ subject: placementSubject === "math" ? "math" : "english", grade: level });
+    setSubject(section);
+    setGlobalView(null);
+  }
 
   if (!settingsLoaded) {
     return (
@@ -6685,21 +6950,25 @@ function CombinedApp() {
       {globalView === "report" && (
         <CombinedProgressReport onExit={() => setGlobalView(null)} />
       )}
+      {globalView === "placement" && (
+        <PlacementTest onExit={() => setGlobalView(null)} onStartLearning={startLearningAt} />
+      )}
       {globalView === null && subject === null && (
         <SubjectPicker
           onSelect={(s) => setSubject(s)}
           onOpenReport={() => setGlobalView("report")}
           onOpenSettings={() => setGlobalView("settings")}
+          onOpenPlacement={() => setGlobalView("placement")}
         />
       )}
       {globalView === null && subject === "reading" && (
-        <ReadingSection onSwitchSubject={goSubjectPicker} />
+        <ReadingSection onSwitchSubject={goSubjectPicker} startGrade={startAt && startAt.grade} />
       )}
       {globalView === null && subject === "math" && (
-        <MathSection onSwitchSubject={goSubjectPicker} />
+        <MathSection onSwitchSubject={goSubjectPicker} startGrade={startAt && startAt.grade} />
       )}
       {globalView === null && subject === "upper" && (
-        <UpperSection onSwitchSubject={goSubjectPicker} />
+        <UpperSection onSwitchSubject={goSubjectPicker} startAt={startAt} />
       )}
     </div>
   );
