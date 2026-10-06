@@ -5,7 +5,7 @@ import {
   ListOrdered, Flame, BarChart3, Clock, ArrowLeftRight, MessageCircle, Send, RefreshCw, Smile, FileText
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
-import { PLACEMENT_ITEMS, PLACEMENT_SUBJECTS, PLACEMENT_GRADES, PASS_SCORE, startingGrade, nextGrade, workingLevel } from "./curriculum/placement";
+import { PLACEMENT_ITEMS, PLACEMENT_SUBJECTS, PLACEMENT_GRADES, PASS_SCORE, startingGrade, nextGrade, workingLevel, gradeIndex } from "./curriculum/placement";
 import { SKILL_GRADES, SKILL_GRADE_LABEL, skillsFor } from "./curriculum/skillMap";
 import { VIDEO_SEEDS, isTrustedChannel, parseYouTubeId, youTubeSearchUrl } from "./curriculum/videos";
 
@@ -14,17 +14,43 @@ import { VIDEO_SEEDS, isTrustedChannel, parseYouTubeId, youTubeSearchUrl } from 
 // --- Live AI tutor helpers (shared by reading & math sections) ---
 // Goes through the "ai-tutor" Supabase Edge Function (supabase/functions/ai-tutor),
 // which holds the API key server-side and only answers signed-in parents.
-// Returns the reply text, or null if the tutor couldn't answer.
-async function askClaude(prompt, maxTokens) {
+// Returns { text, error }: text is the reply (or null); error is a plain-words
+// reason for grown-ups when it failed. Pass a JSON schema to get JSON back.
+async function askClaudeDetailed(prompt, maxTokens, schema) {
   try {
     const { data, error } = await supabase.functions.invoke("ai-tutor", {
-      body: { prompt, maxTokens: maxTokens || 700 },
+      body: { prompt, maxTokens: maxTokens || 700, ...(schema ? { schema } : {}) },
     });
-    if (error || !data) return null;
-    return (typeof data.text === "string" && data.text.trim()) || null;
+    if (error) {
+      let status = 0, serverError = "";
+      try {
+        if (error.context && typeof error.context.status === "number") {
+          status = error.context.status;
+          const payload = await error.context.json();
+          serverError = (payload && (payload.error || payload.message)) || "";
+        }
+      } catch (e) {}
+      return { text: null, error: describeAiError(status, serverError, error.name) };
+    }
+    const text = data && typeof data.text === "string" ? data.text.trim() : "";
+    if (text) return { text, error: null };
+    return { text: null, error: (data && data.error) || "The AI sent back an empty reply." };
   } catch (e) {
-    return null;
+    return { text: null, error: "Couldn't reach the AI server — check the internet connection." };
   }
+}
+async function askClaude(prompt, maxTokens) {
+  return (await askClaudeDetailed(prompt, maxTokens)).text;
+}
+// Turns an ai-tutor failure into something a grown-up can act on (see SETUP-AI.md).
+function describeAiError(status, serverError, errorName) {
+  if (errorName === "FunctionsFetchError" || (!status && !serverError)) return "Couldn't reach the AI server — check the internet connection.";
+  if (status === 404) return "The ai-tutor function isn't in Supabase yet (SETUP-AI.md, step 2).";
+  if (status === 401) return "Supabase turned the request away (401). In Supabase, open Edge Functions → ai-tutor → Details and turn off Verify JWT (see SETUP-AI.md).";
+  if (/ANTHROPIC_API_KEY/.test(serverError)) return "The AI key secret is missing or misspelled in Supabase (SETUP-AI.md, step 3).";
+  if (/key is invalid/i.test(serverError)) return "Anthropic didn't accept the API key — copy it again from console.anthropic.com (SETUP-AI.md, step 3).";
+  if (/credit|billing|balance/i.test(serverError)) return "The Anthropic account is out of credit or hit its spend limit — add credit at console.anthropic.com.";
+  return serverError ? `${serverError}${status ? ` (${status})` : ""}` : `The AI server returned an error (${status}).`;
 }
 function extractJson(text) {
   if (!text) return null;
@@ -803,14 +829,23 @@ Respond ONLY with JSON in exactly this shape: {"lesson": "...", "cards": [{"q": 
 
 - "lesson": 120-180 words. Explain the idea in plain language, then walk through one worked example step by step. You may separate paragraphs with a blank line.
 - "cards": exactly 6 practice questions on this lesson. Each "q" is a clear, self-contained question. Each "a" is the correct answer in under 12 words. All six answers must be different from each other.`;
-  const parsed = extractJson(await askClaude(prompt, 1400));
-  if (!parsed || typeof parsed.lesson !== "string" || !Array.isArray(parsed.cards)) return null;
+  const { text, error } = await askClaudeDetailed(prompt, 2000, UPPER_LESSON_SCHEMA);
+  if (error) return { error };
+  const parsed = extractJson(text);
+  if (!parsed || typeof parsed.lesson !== "string" || !Array.isArray(parsed.cards)) return { error: "The lesson came back incomplete." };
   const cards = parsed.cards
     .filter((c) => c && typeof c.q === "string" && typeof c.a === "string" && c.q.trim() && c.a.trim())
     .map((c) => ({ q: c.q.trim(), a: c.a.trim() }));
-  if (parsed.lesson.trim().length < 40 || cards.length < 4) return null;
-  return { lesson: parsed.lesson.trim(), cards, generatedAt: todayStr() };
+  if (parsed.lesson.trim().length < 40 || cards.length < 4) return { error: "The lesson came back incomplete." };
+  return { written: { lesson: parsed.lesson.trim(), cards, generatedAt: todayStr() } };
 }
+const UPPER_LESSON_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["lesson", "cards"],
+  properties: {
+    lesson: { type: "string" },
+    cards: { type: "array", items: { type: "object", additionalProperties: false, required: ["q", "a"], properties: { q: { type: "string" }, a: { type: "string" } } } },
+  },
+};
 
 const SENTENCE_POOLS = {
   K: [
@@ -5865,6 +5900,7 @@ function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice, on
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
   const [writeState, setWriteState] = useState(topic.lesson ? "ready" : "writing"); // writing | ready | error
+  const [writeError, setWriteError] = useState("");
   const [attempt, setAttempt] = useState(0);
 
   // 6th-12th lessons are written by Ms. Bright the first time they're opened.
@@ -5873,10 +5909,10 @@ function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice, on
     let live = true;
     setWriteState("writing");
     (async () => {
-      const written = await generateUpperLesson(subject, grade, topic);
+      const { written, error } = await generateUpperLesson(subject, grade, topic);
       if (!live) return;
       if (written) { onLessonReady(topic.id, written); setWriteState("ready"); }
-      else setWriteState("error");
+      else { setWriteError(error || ""); setWriteState("error"); }
     })();
     return () => { live = false; };
   }, [topic.id, attempt]); // eslint-disable-line
@@ -5907,7 +5943,8 @@ function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice, on
           {writeState === "error" ? (
             <div className="rounded-2xl p-5" style={{ background: "#fff", border: "2px solid #D98551" }}>
               <div className="text-sm font-bold mb-2" style={{ color: "#D98551" }}>Ms. Bright couldn't write this lesson right now.</div>
-              <div className="text-xs mb-4" style={{ color: "#8B8499" }}>Check your connection and try again. If it keeps happening, a grown-up may need to finish the AI setup.</div>
+              <div className="text-xs mb-3" style={{ color: "#8B8499" }}>Check your connection and try again. If it keeps happening, a grown-up may need to finish the AI setup.</div>
+              {writeError && <div className="text-xs text-left p-2.5 rounded-lg mb-4" style={{ background: "#F5F5F0", color: "#5B6B7A" }}><b>For grown-ups:</b> {writeError}</div>}
               <button onClick={() => setAttempt((n) => n + 1)} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: s.color }}>Try Again</button>
             </div>
           ) : (
@@ -6724,14 +6761,40 @@ async function writeJsonKey(key, value) {
 }
 
 // Turn one AI practice item into { q, choices, answer (index), hint, why }.
+// The answer usually matches a choice exactly; also accept small differences
+// (case, punctuation) or a letter/number like "B" or "2".
 function normalizeClassItem(item) {
   if (!item || typeof item.q !== "string" || !Array.isArray(item.choices)) return null;
   const choices = item.choices.filter((c) => typeof c === "string" && c.trim()).map((c) => c.trim());
   if (choices.length < 2 || new Set(choices).size !== choices.length) return null;
-  const answer = choices.indexOf(String(item.answer || "").trim());
-  if (answer < 0) return null;
+  const loose = (t) => String(t).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const raw = String(item.answer == null ? "" : item.answer).trim();
+  let answer = choices.indexOf(raw);
+  if (answer < 0) answer = choices.findIndex((c) => loose(c) === loose(raw));
+  if (answer < 0 && /^[A-Da-d][).]?$/.test(raw)) answer = raw.toUpperCase().charCodeAt(0) - 65;
+  if (answer < 0 && /^[1-4]$/.test(raw)) answer = Number(raw) - 1;
+  if (answer < 0 || answer >= choices.length) return null;
   return { q: item.q.trim(), choices, answer, hint: typeof item.hint === "string" ? item.hint : "", why: typeof item.why === "string" ? item.why : "" };
 }
+
+// The exact JSON shape Ms. Bright must return for a class lesson.
+const CLASS_QUESTION_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["q", "choices", "answer", "hint", "why"],
+  properties: { q: { type: "string" }, choices: { type: "array", items: { type: "string" } }, answer: { type: "string" }, hint: { type: "string" }, why: { type: "string" } },
+};
+const CLASS_LESSON_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["hook", "vocab", "teach", "example", "weDo", "youDo", "homework"],
+  properties: {
+    hook: { type: "string" },
+    vocab: { type: "array", items: { type: "object", additionalProperties: false, required: ["word", "meaning"], properties: { word: { type: "string" }, meaning: { type: "string" } } } },
+    teach: { type: "string" },
+    example: { type: "object", additionalProperties: false, required: ["problem", "steps", "answer"], properties: { problem: { type: "string" }, steps: { type: "array", items: { type: "string" } }, answer: { type: "string" } } },
+    weDo: { type: "array", items: CLASS_QUESTION_SCHEMA },
+    youDo: { type: "array", items: CLASS_QUESTION_SCHEMA },
+    homework: { type: "object", additionalProperties: false, required: ["title", "materials", "steps"], properties: { title: { type: "string" }, materials: { type: "array", items: { type: "string" } }, steps: { type: "array", items: { type: "string" } } } },
+  },
+};
 
 async function generateClassLesson(subject, grade, skill) {
   const prompt = `Write a complete lesson for a ${SKILL_GRADE_LABEL[grade]} student in ${CLASS_SUBJECT_LABEL[subject]} on "${skill.title}" (${skill.focus}). The student may be behind grade level, so build up from the basics, use short sentences and concrete everyday examples, and explain any new word.
@@ -6747,7 +6810,24 @@ Respond ONLY with JSON in exactly this shape:
 - "youDo": exactly 5 questions on their own, a mix of easier and harder.
 - Every question has 3 or 4 different choices, exactly one correct; "answer" must match the correct choice word for word; "why" explains the right answer in 1-2 sentences.
 - "homework": a hands-on activity away from screens (10-20 minutes) using common household items, with 3-6 clear steps.`;
-  const parsed = extractJson(await askClaude(prompt, 2600));
+  // Returns { lesson } or { error } (a reason grown-ups can act on). Tries twice.
+  let lastError = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { text, error } = await askClaudeDetailed(prompt, 4000, CLASS_LESSON_SCHEMA);
+    if (error) {
+      lastError = error;
+      // Setup problems won't fix themselves on a retry.
+      if (!/cut off|empty reply|busy/i.test(error)) break;
+      continue;
+    }
+    const lesson = buildClassLesson(extractJson(text));
+    if (lesson) return { lesson };
+    lastError = "The lesson came back incomplete.";
+  }
+  return { error: lastError || "The lesson came back incomplete." };
+}
+
+function buildClassLesson(parsed) {
   if (!parsed || typeof parsed.teach !== "string" || parsed.teach.trim().length < 40) return null;
   const weDo = (parsed.weDo || []).map(normalizeClassItem).filter(Boolean);
   const youDo = (parsed.youDo || []).map(normalizeClassItem).filter(Boolean);
@@ -6970,6 +7050,7 @@ function ClassLesson({ subject, grade, skill, color, onExit, onFinished }) {
   const earlyGrades = ["K", "1", "2"].includes(grade);
   const [lesson, setLesson] = useState(null);
   const [state, setState] = useState("loading"); // loading | error | ready
+  const [errorDetail, setErrorDetail] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [step, setStep] = useState("learn"); // learn | watch | together | solo | done
   const [exampleShown, setExampleShown] = useState(0);
@@ -6987,9 +7068,9 @@ function ClassLesson({ subject, grade, skill, color, onExit, onFinished }) {
       const key = CLASS_LESSONS_KEY(subject, grade);
       const saved = await readJsonKey(key, {});
       if (saved[skill.id]) { if (live) { setLesson(saved[skill.id]); setState("ready"); } return; }
-      const written = await generateClassLesson(subject, grade, skill);
+      const { lesson: written, error } = await generateClassLesson(subject, grade, skill);
       if (!live) return;
-      if (!written) { setState("error"); return; }
+      if (!written) { setErrorDetail(error || ""); setState("error"); return; }
       const latest = await readJsonKey(key, {});
       await writeJsonKey(key, { ...latest, [skill.id]: written });
       setLesson(written);
@@ -7037,7 +7118,8 @@ function ClassLesson({ subject, grade, skill, color, onExit, onFinished }) {
       state === "error" ? (
         <div className="rounded-2xl p-5 text-center mt-6" style={{ background: "#fff", border: "2px solid #D98551" }}>
           <div className="text-sm font-bold mb-2" style={{ color: "#D98551" }}>Ms. Bright couldn't get this lesson ready right now.</div>
-          <div className="text-xs mb-4" style={{ color: "#8B8499" }}>Check your connection and try again. If it keeps happening, a grown-up may need to finish the AI setup.</div>
+          <div className="text-xs mb-3" style={{ color: "#8B8499" }}>Check your connection and try again. If it keeps happening, a grown-up may need to finish the AI setup.</div>
+          {errorDetail && <div className="text-xs text-left p-2.5 rounded-lg mb-4" style={{ background: "#F5F5F0", color: "#5B6B7A" }}><b>For grown-ups:</b> {errorDetail}</div>}
           <button onClick={() => setAttempt((n) => n + 1)} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: color }}>Try Again</button>
         </div>
       ) : (
@@ -7581,6 +7663,20 @@ async function loadPlacementResults() {
   return {};
 }
 
+// A new (or chosen) placement level also sets where School Day classes start:
+// Math from the Math placement; Reading & Writing, Science and Social Studies
+// from the Reading placement. Mastered skills are kept.
+async function applyPlacementToClasses(placementSubject, level) {
+  try {
+    const res = await window.storage.get("class-progress");
+    const progress = res && res.value ? JSON.parse(res.value) : { levels: {}, mastered: {}, attempts: {} };
+    const subjects = placementSubject === "math" ? ["math"] : ["english", "science", "social"];
+    const levels = { ...(progress.levels || {}) };
+    subjects.forEach((s) => { levels[s] = level; });
+    await window.storage.set("class-progress", JSON.stringify({ ...progress, levels }));
+  } catch (e) {}
+}
+
 function gradeShortLabel(g) {
   return g === "K" ? "Kinder" : `${g}${g === "1" ? "st" : g === "2" ? "nd" : g === "3" ? "rd" : "th"}`;
 }
@@ -7597,7 +7693,9 @@ function PlacementTest({ onExit, onStartLearning }) {
   const [history, setHistory] = useState([]);
   const [gaps, setGaps] = useState([]); // skills missed at grades not yet passed
   const [gradeMissed, setGradeMissed] = useState([]); // skills missed at the current grade
+  const [gradeIdk, setGradeIdk] = useState(0); // "I don't know" taps at the current grade
   const [picked, setPicked] = useState(null);
+  const [previous, setPrevious] = useState(null); // the result this attempt is compared with
   const [questionNumber, setQuestionNumber] = useState(1);
 
   useEffect(() => {
@@ -7627,8 +7725,10 @@ function PlacementTest({ onExit, onStartLearning }) {
     setHistory([]);
     setGaps([]);
     setGradeMissed([]);
+    setGradeIdk(0);
     setPicked(null);
     setQuestionNumber(1);
+    setPrevious(results[subj] || null);
     setPhase("quiz");
   }
 
@@ -7641,24 +7741,39 @@ function PlacementTest({ onExit, onStartLearning }) {
   }, [item]); // eslint-disable-line
 
   function readItem(it) {
-    speakSequence([it.say || it.q, ...it.options.map((o, i) => `Choice ${i + 1}: ${o}`)], 0.85, 350);
+    speakSequence([it.say || it.q, ...it.options.map((o, i) => `Choice ${i + 1}: ${o}`), "Or tap: I don't know."], 0.85, 350);
   }
 
   async function finish(finalHistory, finalMissed) {
     const level = workingLevel(finalHistory);
-    const entry = { level, ageGrade, date: todayStr(), history: finalHistory, missedSkills: [...new Set(finalMissed)] };
-    const next = { ...results, [subject]: entry };
-    setResults(next);
+    const attempt = { level, date: todayStr(), history: finalHistory };
+    // Older saves have no attempts list; keep their single result as the first attempt.
+    const earlier = previous ? (previous.attempts || [{ level: previous.level, date: previous.date, history: previous.history || [] }]) : [];
+    const entry = { level, ageGrade, date: todayStr(), history: finalHistory, missedSkills: [...new Set(finalMissed)], attempts: [...earlier, attempt].slice(-5) };
+    await saveResult(entry);
     setPhase("result");
-    try { await window.storage.set(PLACEMENT_KEY, JSON.stringify(next)); } catch (e) {}
   }
 
+  async function saveResult(entry) {
+    const next = { ...results, [subject]: entry };
+    setResults(next);
+    try { await window.storage.set(PLACEMENT_KEY, JSON.stringify(next)); } catch (e) {}
+    await applyPlacementToClasses(subject, entry.level);
+  }
+
+  // When results differ between attempts, a grown-up picks which level to use.
+  function useLevel(level) {
+    saveResult({ ...results[subject], level });
+  }
+
+  // i is a choice index, or "idk" for "I don't know" (counted as not known yet).
   function choose(i) {
     if (picked !== null) return;
     setPicked(i);
     const correct = i === item.answer;
-    recordActivity(subject === "math" ? MATH_ACTIVITY_KEY : ACTIVITY_KEY, correct);
+    if (i !== "idk") recordActivity(subject === "math" ? MATH_ACTIVITY_KEY : ACTIVITY_KEY, correct);
     const nextScore = score + (correct ? 1 : 0);
+    const nextIdk = gradeIdk + (i === "idk" ? 1 : 0);
     const nextGradeMissed = correct ? gradeMissed : [...gradeMissed, item.skill];
     setTimeout(() => {
       setPicked(null);
@@ -7666,10 +7781,11 @@ function PlacementTest({ onExit, onStartLearning }) {
       if (itemIdx + 1 < items.length) {
         setItemIdx(itemIdx + 1);
         setScore(nextScore);
+        setGradeIdk(nextIdk);
         setGradeMissed(nextGradeMissed);
         return;
       }
-      const nextHistory = [...history, { grade, score: nextScore }];
+      const nextHistory = [...history, { grade, score: nextScore, idk: nextIdk }];
       // Only skills missed at grades they didn't pass count as gaps.
       const nextGaps = nextScore >= PASS_SCORE ? gaps : [...gaps, ...nextGradeMissed];
       const g = nextGrade(nextHistory);
@@ -7677,6 +7793,7 @@ function PlacementTest({ onExit, onStartLearning }) {
       setHistory(nextHistory);
       setGaps(nextGaps);
       setGradeMissed([]);
+      setGradeIdk(0);
       setGrade(g);
       setItems(prepareItems(subject, g));
       setItemIdx(0);
@@ -7702,7 +7819,7 @@ function PlacementTest({ onExit, onStartLearning }) {
           </div>
           <h1 className="text-2xl font-black" style={{ color: "#2B2250" }}>Let's find your starting place</h1>
           <p className="text-sm mt-1.5" style={{ color: "#8B8499" }}>
-            Ms. Bright will ask a few questions to see what you already know. It's okay not to know an answer — just pick your best guess!
+            Ms. Bright will ask a few questions to see what you already know. If you don't know an answer, tap <b>I don't know</b> — that's much better than guessing, and it helps Ms. Bright pick the right level for you.
           </p>
         </div>
 
@@ -7728,7 +7845,7 @@ function PlacementTest({ onExit, onStartLearning }) {
               <div className="flex-1">
                 <div className="font-black text-base" style={{ color: "#2B2250" }}>{s.label} Placement</div>
                 <div className="text-xs" style={{ color: "#8B8499" }}>
-                  {results[key] ? `Last result: ${SKILL_GRADE_LABEL[results[key].level]} level (${results[key].date})` : "About 5-15 minutes"}
+                  {results[key] ? `Last result: ${SKILL_GRADE_LABEL[results[key].level]} (${results[key].date}) · tap to retake` : "About 5-15 minutes"}
                 </div>
               </div>
               <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
@@ -7753,6 +7870,38 @@ function PlacementTest({ onExit, onStartLearning }) {
           <p className="text-sm" style={{ color: "#8B8499" }}>Great work! This is where learning will be just right — not too easy, not too hard.</p>
         </div>
 
+        {(() => {
+          const tries = r.attempts || [];
+          if (tries.length < 2) return null;
+          const latest = tries[tries.length - 1];
+          const before = tries[tries.length - 2];
+          if (latest.level === before.level) {
+            return (
+              <div className="rounded-2xl p-4 mb-4 text-sm font-bold" style={{ background: "#6FAE8B18", color: "#2B2250", border: "2px solid #6FAE8B" }}>
+                ✓ Same result as last time ({before.date}). This level looks accurate.
+              </div>
+            );
+          }
+          const lower = gradeIndex(latest.level) < gradeIndex(before.level) ? latest.level : before.level;
+          return (
+            <div className="rounded-2xl p-4 mb-4" style={{ background: "#E8B84B18", border: "2px solid #E8B84B" }}>
+              <div className="font-black text-sm mb-1" style={{ color: "#2B2250" }}>This result is different from last time</div>
+              <div className="text-xs mb-3" style={{ color: "#5B6B7A" }}>
+                Last time ({before.date}): <b>{SKILL_GRADE_LABEL[before.level]}</b> · This time: <b>{SKILL_GRADE_LABEL[latest.level]}</b>.
+                For grown-ups: choose which level to use. Starting at the lower one is usually safer — it fills gaps, and classes move up quickly once skills are mastered.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[before.level, latest.level].map((lv) => (
+                  <button key={lv} onClick={() => useLevel(lv)} className="kbtn py-2.5 rounded-xl font-black text-xs"
+                    style={{ background: r.level === lv ? accent : "#fff", color: r.level === lv ? "#fff" : "#2B2250", border: `2px solid ${accent}` }}>
+                    {r.level === lv ? "✓ " : ""}Use {SKILL_GRADE_LABEL[lv]}{lv === lower ? " (safer)" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {gaps.length > 0 && (
           <div className="rounded-2xl p-4 mb-4" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
             <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>Skills to fill in first</div>
@@ -7772,9 +7921,14 @@ function PlacementTest({ onExit, onStartLearning }) {
         <button onClick={() => onStartLearning(subject, r.level)} className="kbtn w-full py-3 rounded-xl font-black text-white mb-2.5 flex items-center justify-center gap-2" style={{ background: accent }}>
           Start Learning Here <ArrowRight size={16} />
         </button>
-        <button onClick={() => begin(other)} className="kbtn w-full py-3 rounded-xl font-black mb-2.5" style={{ background: "#EEE6D6", color: "#2B2250" }}>
-          {results[other] ? `Retake ${PLACEMENT_SUBJECTS[other].label} Placement` : `Now Try ${PLACEMENT_SUBJECTS[other].label} Placement`}
-        </button>
+        <div className="grid grid-cols-2 gap-2 mb-2.5">
+          <button onClick={() => begin(subject)} className="kbtn py-3 rounded-xl font-black text-sm" style={{ background: "#EEE6D6", color: "#2B2250" }}>
+            <RotateCcw size={14} className="inline mr-1" /> Retake {PLACEMENT_SUBJECTS[subject].label}
+          </button>
+          <button onClick={() => begin(other)} className="kbtn py-3 rounded-xl font-black text-sm" style={{ background: "#EEE6D6", color: "#2B2250" }}>
+            {results[other] ? `Retake ${PLACEMENT_SUBJECTS[other].label}` : `Try ${PLACEMENT_SUBJECTS[other].label}`}
+          </button>
+        </div>
         <button onClick={onExit} className="kbtn w-full py-2.5 rounded-xl font-bold text-sm" style={{ color: "#8B8499" }}>Done</button>
       </>
     );
@@ -7799,6 +7953,11 @@ function PlacementTest({ onExit, onStartLearning }) {
           </button>
         ))}
       </div>
+      <button onClick={() => choose("idk")} className="kbtn w-full mt-3 px-4 py-3 rounded-xl font-black text-base"
+        style={{ background: picked === "idk" ? "#EEE6D6" : "#FAF8F4", border: "2px dashed #C9C2D6", color: "#5B6B7A" }}>
+        🤔 I don't know
+      </button>
+      <p className="text-xs text-center mt-2" style={{ color: "#8B8499" }}>Not sure? Tapping “I don't know” is better than guessing.</p>
     </>
   );
 }
