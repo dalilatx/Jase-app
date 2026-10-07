@@ -343,6 +343,41 @@ const STORIES = {
       category: "History",
       text: "We go to the museum. Look up! Big old bones! They are so big. A long time ago, a big animal was here. It is not here now. Can we look more? Yes, we can! I see more old bones. I like the museum. We had fun today.",
     },
+    {
+      title: "The School Band",
+      question: { prompt: "What did the kids play at school?", options: ["Music", "A game", "Lunch"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "We go to school. Today we play music! I bang a drum. Bang, bang, bang! My friend has a bell. Ding, ding, ding! Can you hear us? We play fast. We play slow. It is so much fun. I like our school band. Let's play again!",
+    },
+    {
+      title: "Up, Up to Space",
+      question: { prompt: "Where did the rocket go?", options: ["Up to space", "Into the sea", "Under the ground"], correct: 0 },
+      scene: "space",
+      category: "Space",
+      text: "Look at my rocket! It is red and white. Three, two, one, go! Up, up, up it goes. It can go so high. I see the moon. I see a star. Is it far away? Yes, it is far! My rocket flies and flies. Then it comes back down. I like my rocket.",
+    },
+    {
+      title: "Let's Make Soup",
+      question: { prompt: "What did they put in the pot?", options: ["Carrots", "Rocks", "Toys"], correct: 0 },
+      scene: "kitchen",
+      category: "Cooking",
+      text: "Mom and I make soup today. First, we get a big pot. Then we cut carrots. Can I help? Yes, you can! We put the carrots in. We put water in too. Stir, stir, stir! It smells so good. Is it done? Yes, it is done! We eat the soup. Yum, yum, yum!",
+    },
+    {
+      title: "Field Day Fun",
+      question: { prompt: "What did they do first at Field Day?", options: ["A running race", "A nap", "Homework"], correct: 0 },
+      scene: "fair",
+      category: "Sports",
+      text: "Today is Field Day! We go outside to play. First, we run a race. Ready, set, go! I run so fast. Then we jump. Up, up, up! We play a ball game too. My team wins! We clap and cheer. Field Day is so much fun. I like to run and play.",
+    },
+    {
+      title: "The Big Red Fire Truck",
+      question: { prompt: "What color was the fire truck?", options: ["Red", "Blue", "Green"], correct: 0 },
+      scene: "garage",
+      category: "Community",
+      text: "We see a big red fire truck! It is so big. A firefighter waves to us. Hi, firefighter! Can we look at the truck? Yes, you can! I see a big hose. I see a tall ladder. The firefighter helps keep us safe. Thank you, firefighter! We wave and wave. I like the big red truck.",
+    },
   ],
   "1": [
     {
@@ -379,6 +414,41 @@ const STORIES = {
       scene: "art",
       category: "Art",
       text: "Our class is having an art show on Friday. I did not know what to paint at first. My teacher said, paint something you love. So I thought about it all day. That night, I picked my paints and got to work. I painted my mom, my dad, my dog, and me. On Friday, I hung it on the wall with the others. My family came to look at it. They said it was their favorite one there. I felt so proud of my painting.",
+    },
+    {
+      title: "The Trip to the Moon",
+      question: { prompt: "What did the astronaut collect on the moon?", options: ["Moon rocks", "Seashells", "Flowers"], correct: 0 },
+      scene: "space",
+      category: "Space",
+      text: "In my book, an astronaut flies all the way to the moon. Her ship shakes and roars as it blasts off the ground. Once she lands, she puts on a big, puffy suit to go outside. The moon has no air to breathe, so the suit keeps her safe. She bounces more than she walks, since the moon's pull is so light. Carefully, she picks up a few gray moon rocks to bring home. Scientists will study them to learn how the moon was made. I would love to bounce around up there someday too.",
+    },
+    {
+      title: "Grandma's Soup Pot",
+      question: { prompt: "What was special about Grandma's soup pot?", options: ["It had been in the family for years", "It was brand new", "It was very small"], correct: 0 },
+      scene: "kitchen",
+      category: "Cooking",
+      text: "Every Sunday, Grandma pulls out the same old soup pot. It is dented on one side and the handle is a little loose. This pot belonged to my great-grandmother, she told me once. We chop carrots and onions together while the broth warms up. The whole kitchen fills with a smell that means Sunday has begun. Grandma says a good soup needs patience more than anything else. We let it simmer slowly for hours instead of rushing it. When it's finally ready, the whole family gathers around the table. Someday, Grandma says, that old pot will be mine.",
+    },
+    {
+      title: "The Lost Mitten",
+      question: { prompt: "How did the class find the owner of the lost mitten?", options: ["They asked around until someone recognized it", "They threw it away", "They kept it for themselves"], correct: 0 },
+      scene: "hills",
+      category: "Friendship",
+      text: "On the walk back from recess, I found a bright blue mitten in the snow. It did not have a name tag, so I did not know whose it was. I could have just kept it, but that did not feel right. Instead, I showed it to my teacher and we asked around the class. Finally, a quiet new kid named Sam said it might be his. He had been too shy to ask anyone if they had seen it. I was glad I had looked for the owner instead of keeping it. Sam and I ended up walking home together that day.",
+    },
+    {
+      title: "The Class Pet",
+      question: { prompt: "What did the class learn from taking care of the hamster?", options: ["Taking care of something is a shared job", "Hamsters do not need food", "Pets are easy to ignore"], correct: 0 },
+      scene: "science",
+      category: "Animals",
+      text: "Our class got a hamster named Pepper this year, and everyone wanted to help care for him. My teacher made a schedule so each of us got a turn feeding him and cleaning his cage. At first, I thought it would be easy, but there was more to remember than I expected. Pepper needed fresh water every day and his cage cleaned every week. One weekend, it was my turn, and I almost forgot until my mom reminded me. I felt proud knowing Pepper was counting on me to remember. Taking care of a pet, even a tiny one, is a job for the whole class.",
+    },
+    {
+      title: "Field Day Race",
+      question: { prompt: "Why did the boy help his friend during the race?", options: ["His friend had fallen and needed help", "He wanted to win first place", "He was tired of racing"], correct: 0 },
+      scene: "fair",
+      category: "Sports",
+      text: "Field Day was finally here, and I had practiced my running all week. When the race started, I was right near the front of the pack. Halfway through, I heard a friend of mine trip and fall behind me. I could have kept running to try to win, but I stopped to check on him instead. He had scraped his knee, so I helped him up and we finished together. We came in almost last, but it did not feel like losing. My teacher said that was the best kind of Field Day moment. Sometimes finishing together matters more than finishing first.",
     },
   ],
   "2": [
@@ -417,6 +487,41 @@ const STORIES = {
       category: "Art",
       text: "Every spring, our school holds an art show in the gym. This year, I painted a picture of the lake by our house. I used bright blue, yellow, and green paint to make it glow. My teacher said color can make a painting feel happy or calm. When the judges walked by, they stopped at my painting for a long time. They loved how the colors seemed to shine, one of them said. I won a blue ribbon for my painting. I hung it on my wall so I can see it every day.",
     },
+    {
+      title: "The Robot Helper",
+      question: { prompt: "What job did the kids give their robot?", options: ["Sorting recycling", "Doing homework", "Driving a car"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "In science club, we built a small robot out of a kit. It had wheels, a little arm, and a sensor that could see color. Our teacher asked us to give it a real job to do. We decided it should help sort recycling into paper and plastic bins. The hardest part was teaching the sensor to tell the colors apart correctly. After three tries, our robot finally sorted ten items in a row without a mistake. Everyone in class cheered when it dropped the last can in the right bin. Robots are not magic — they just need patient teaching, like we do.",
+    },
+    {
+      title: "A Trip to the Library",
+      question: { prompt: "What did the librarian help the kids find?", options: ["Books about space", "A missing dog", "A new game"], correct: 0 },
+      scene: "museum",
+      category: "Community",
+      text: "Our class walked to the public library for a special visit this week. The librarian showed us how the books were organized by subject and number. My friend and I wanted to find books about space and planets. At first we looked in the wrong section and could not find any. The librarian helped us search the catalog on the computer instead. She found three books we never would have found on our own. I did not know librarians knew where almost every book was. Now the library feels less like a maze and more like a helpful friend.",
+    },
+    {
+      title: "The Windy Kite Festival",
+      question: { prompt: "Why did some kites fly better than others at the festival?", options: ["Their shape caught the wind well", "They were painted bright colors", "They were the most expensive"], correct: 0 },
+      scene: "kite",
+      category: "Weather",
+      text: "Our town holds a kite festival every spring when the winds pick up. This year, my dad and I built our own kite instead of buying one. We tried a few different shapes before settling on a diamond design. At the festival, some kites with fancy designs just spun and crashed in the wind. Ours, plain as it was, caught the breeze and climbed high above the field. A judge told us shape matters more than decoration when it comes to flying. We did not win for looks, but ours stayed up the longest of all. Sometimes simple and well-made beats fancy and fragile.",
+    },
+    {
+      title: "The New Kid at School",
+      question: { prompt: "What helped the new student feel welcome?", options: ["Someone invited her to sit with them at lunch", "Everyone ignored her", "The teacher gave her extra homework"], correct: 0 },
+      scene: "school",
+      category: "Friendship",
+      text: "A new girl named Priya joined our class in the middle of the year. She sat alone at lunch on her first day, looking a little nervous. I remembered how scary it felt when my family moved here last year. So I walked over and asked if she wanted to sit with my friends and me. She seemed relieved and told us about her old school on the way. By the end of the week, she was laughing with us at recess like she had always been there. It did not take much — just one small invitation. Now she is one of my best friends at school.",
+    },
+    {
+      title: "Under the Sea",
+      question: { prompt: "What did the class learn about coral at the aquarium?", options: ["Coral is actually a living animal", "Coral is a kind of rock", "Coral cannot be harmed"], correct: 0 },
+      scene: "ocean",
+      category: "Animals",
+      text: "Our class took a field trip to the aquarium to see the coral reef tank. I always thought coral was just colorful rock sitting on the ocean floor. Our guide explained that coral is actually made of tiny living animals called polyps. Each polyp builds a tiny stone home, and together they form the whole reef. Fish, turtles, and crabs all depend on healthy coral reefs for food and shelter. The guide also said warm water and pollution can hurt coral and turn it white. That surprised me, since I always thought of the ocean as too big to harm. Now I understand why everyone kept telling us to protect the reefs.",
+    },
   ],
   "3": [
     {
@@ -453,6 +558,41 @@ const STORIES = {
       scene: "garden",
       category: "Science",
       text: "For our science project, we had to study bugs in our own backyard. My partner and I got a jar, a notebook, and a magnifying glass. Under a rock, we found a pill bug that curled into a tiny ball. Near the flowers, a bee moved from petal to petal, collecting pollen. We wrote down what each bug looked like and where we found it. Some bugs have six legs, my partner noticed, and some have more. Our teacher explained that counting legs helps scientists sort living things into groups. By the end, we had found twelve different kinds of bugs.",
+    },
+    {
+      title: "The Robotics Club",
+      question: { prompt: "What problem did the robotics team solve first?", options: ["Why their robot kept driving in circles", "How to paint their robot", "Where to store their robot"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "Our after-school robotics club built a small robot to compete in a maze challenge. The first time we tested it, the robot just drove in a slow, endless circle. We checked the wheels and the battery, but everything looked fine at first. Finally, one teammate noticed we had typed one wire's setting backward in the program. Fixing that single line of code made all the difference once we tried again. The robot drove straight down the hallway on its very first real attempt. Small mistakes, our coach told us, often cause the biggest problems in robotics. We learned that patience matters just as much as building skill.",
+    },
+    {
+      title: "The Mountain Weather Station",
+      question: { prompt: "Why did the scientists build the weather station high on the mountain?", options: ["Weather changes faster and more dramatically at high elevation", "It was the only flat spot available", "Tourists wanted to visit it"], correct: 0 },
+      scene: "hills",
+      category: "Weather",
+      text: "On our field trip, we visited a weather station built partway up a mountain. Our guide explained that weather changes much faster and more wildly at higher elevation. Within one single day, the station can measure sun, wind, and even snow. Scientists use the data to predict storms before they reach the towns below. One instrument spins in the wind to measure speed, while another collects rainfall. The scientist told us the station had once recorded three different kinds of weather in an hour. That seemed incredible until I remembered how quickly clouds moved over the peak we were standing on. High places, it turns out, show you weather that happens too fast to notice down below.",
+    },
+    {
+      title: "The Food Drive",
+      question: { prompt: "What did the class learn from running the food drive?", options: ["Small contributions add up to something big", "Food drives are easy to organize alone", "Only adults can help their community"], correct: 0 },
+      scene: "school",
+      category: "Community",
+      text: "Our class decided to organize a food drive for a local shelter this winter. At first, it felt like a small idea — just a box in the hallway. Each day, a few more cans and boxes of pasta appeared inside it. By the end of two weeks, the box had turned into four overflowing crates. Our teacher helped us deliver everything to the shelter in her own car. The shelter director said our donation would feed several families for almost a month. I realized that no single can seemed like much on its own. But together, all those small contributions added up to something that really mattered.",
+    },
+    {
+      title: "The Class Band Concert",
+      question: { prompt: "What helped the nervous trumpet player get through the concert?", options: ["Remembering to breathe and focus on the music", "Skipping her solo entirely", "Playing as loudly as possible", "Leaving the stage early"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "I had practiced my trumpet solo for weeks before our winter concert. Backstage, my hands were shaking and my mouth suddenly felt dry. My music teacher knelt down and reminded me to just breathe slowly before playing. Focus on the music, not the crowd, she told me quietly. When my turn came, I closed my eyes for a second and pictured only the notes. The solo came out smoother than it ever had in practice at home. Afterward, my parents said they could not even tell I had been nervous. I learned that nerves do not disappear — you just learn to play through them.",
+    },
+    {
+      title: "The Tide Pool Discovery",
+      question: { prompt: "What rule did the class follow when exploring the tide pools?", options: ["Look closely, but put everything back where you found it", "Take home anything interesting", "Only look at the biggest animals", "Avoid touching the water at all"], correct: 0 },
+      scene: "ocean",
+      category: "Nature",
+      text: "At low tide, our class explored the rocky pools left behind by the ocean. Our guide had one important rule: look closely, but put everything back exactly where you found it. In one pool, we found a tiny orange starfish clinging to a rock. In another, a hermit crab scuttled sideways beneath a cluster of mussels. My partner wanted to bring a sea snail home in his pocket, but our guide reminded him it would not survive out of its pool. We carefully set each creature back before moving to the next pool. Our guide said tide pools are only healthy if everyone treats them gently. I left with empty pockets, but with a notebook full of amazing drawings.",
     },
   ],
   "4": [
@@ -491,6 +631,41 @@ const STORIES = {
       category: "Art",
       text: "A local artist came to paint a mural on the wall of our community center. Instead of painting it alone, she asked neighbors to help fill in sections she had outlined. My job was to paint part of a bright orange sun in the corner. An older man down the street painted a row of houses, since he had lived there his whole life. The artist explained that murals work best when they show what a neighborhood actually loves. By the end of the weekend, dozens of people had added their own brushstrokes. Now, whenever I walk past, I can point to the small patch of sky that is mine. It does not feel like just her mural anymore. It feels like ours.",
     },
+    {
+      title: "The App Idea",
+      question: { prompt: "Why did the team change their app idea halfway through?", options: ["Testing with real users showed their first idea did not solve a real problem", "They ran out of time to build anything", "Their teacher told them to copy another app"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "For our technology fair, my team planned to build an app that just played sound effects. A week in, our teacher asked us to test it on a few classmates first. Almost everyone said the same thing: it was fun for about thirty seconds, then boring. We realized we had built something nobody actually needed, just something that worked. So we scrapped most of our code and started over with a new idea. Instead, we built a simple app that reminded students when homework was due. When we tested that version, people actually asked to keep using it afterward. Good technology, our teacher said, solves a real problem — it doesn't just show off what you can build.",
+    },
+    {
+      title: "The World Map Project",
+      question: { prompt: "What mistake did the team catch while building their map?", options: ["They had mislabeled two countries' locations", "They used too many colors", "They finished too early"], correct: 0 },
+      scene: "museum",
+      category: "Geography",
+      text: "Our class built a giant floor map of the world out of painted plywood pieces. Each group researched one continent and placed its countries in the correct spot. My group was assigned Africa, which has more countries than any other continent. Partway through, another group pointed out that we had swapped two countries' locations. We had to carefully peel up the pieces and reposition them before the glue dried. Our teacher said even professional mapmakers double-check their work for exactly this reason. By the end, the whole class had built something we could actually walk across. Standing in the middle of our own giant map made the size of the world feel real.",
+    },
+    {
+      title: "The Food Bank Volunteer",
+      question: { prompt: "What surprised the volunteers about sorting donations?", options: ["How much coordination it took to avoid wasting anything", "That nobody needed help organizing", "That donations never expire"], correct: 0 },
+      scene: "school",
+      category: "Community",
+      text: "My family signed up to volunteer at the food bank over winter break this year. I expected the job to be simple: just put cans on a shelf. Instead, a staff member showed us how to check expiration dates and sort by type. Fresh produce had to be given out within days, or it would spoil and go to waste. Canned goods could wait longer, so they went to a different, slower-moving shelf. It took real coordination to make sure nothing good got thrown away by mistake. By the end of the day, we had sorted enough food for dozens of families. I never realized how much planning it takes to make sure help actually reaches people in time.",
+    },
+    {
+      title: "The Talent Show",
+      question: { prompt: "What helped the singer get through her stage fright?", options: ["A friend stood just offstage where she could see him", "She memorized extra verses", "She performed in the dark"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "I signed up to sing at the school talent show, but by the week of the show I regretted it completely. Every time I practiced in front of my family, my voice shook and cracked. My best friend noticed how nervous I was getting as the date got closer. He offered to stand just offstage, where I could see him the whole time I sang. On the night of the show, I stepped out and immediately found his face in the wing. Somehow, having one familiar face nearby made the rest of the crowd disappear a little. My voice still shook on the first note, but it steadied by the second verse. Afterward, I realized you don't have to feel brave alone — you can borrow someone else's courage for a minute.",
+    },
+    {
+      title: "The Coral Reef Report",
+      question: { prompt: "What did the student's report conclude about the reef's health?", options: ["Warmer water was causing it to lose color and life", "The reef had never looked better", "Reefs cannot be harmed by temperature"], correct: 0 },
+      scene: "ocean",
+      category: "Nature",
+      text: "For my research report, I compared photos of the same coral reef taken ten years apart. In the older photos, the coral glowed with bright purples, oranges, and greens. In the recent photos, much of it looked pale, almost bleached white in places. At first I thought the camera settings were just different between the two trips. But my research explained that warmer ocean water causes coral to lose its color and its tiny living algae. Without that algae, the coral starves and can eventually die if conditions don't improve. Scientists are studying which types of coral can survive slightly warmer water better than others. Writing the report made the ocean feel less like a distant, unchangeable place and more like something we're actually responsible for.",
+    },
   ],
   "5": [
     {
@@ -527,6 +702,41 @@ const STORIES = {
       scene: "art",
       category: "Art",
       text: "At the end of the year, our art teacher asked us to put together a portfolio of our best work. I almost threw out my pieces from September, since they looked rough compared to my recent ones. My teacher stopped me. Keep those, she said. They show where you started. When I laid everything out in order, I could actually see how my linework had steadied and my colors had grown more confident. A piece I once thought was my best now looked clumsy next to my newest painting. Growth is hard to see day by day, she explained, but it is obvious once you step back. I arranged the portfolio from my very first sketch to my latest piece. For the first time, I felt proud of the whole journey, not just the final painting.",
+    },
+    {
+      title: "The Coding Competition",
+      question: { prompt: "What ultimately won the coding competition for the team?", options: ["A simple solution that worked reliably every time", "The most complicated code in the contest", "The fastest typing speed"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "Our team spent weeks preparing for the regional coding competition, convinced we needed the most advanced solution possible. During practice, we kept adding clever shortcuts to make our program run faster. The night before the contest, one shortcut caused our whole program to crash without warning. With no time left to rebuild something fancy, we stripped our code back down to its simplest working version. It was not elegant, but it ran the same way every single time we tested it. At the competition, several teams with complicated code crashed under the pressure of the judges' tests. Our plain, reliable program finished every task without a single error. We learned that clever only matters if it still works when it counts.",
+    },
+    {
+      title: "The Model UN",
+      question: { prompt: "What changed the student's mind about her assigned country's position?", options: ["Researching deeply made her understand a view she had dismissed", "A teacher ordered her to agree with it", "She lost a debate and had to concede"], correct: 0 },
+      scene: "museum",
+      category: "Geography",
+      text: "For our school's Model UN event, I was assigned to represent a country whose policies I privately disagreed with. At first, I planned to just read my notes without really believing any of it. But preparing meant researching why that country had made its decisions in the first place. The more I read about its history and its resources, the more its position started to make sense. I still did not fully agree with it, but I understood it in a way I hadn't before. During the debate, I argued my country's case more convincingly than I expected to. Afterward, a judge told me the best delegates are the ones who can argue a view they don't personally hold. I left realizing that understanding a different perspective is not the same as agreeing with it.",
+    },
+    {
+      title: "The Community Garden Project",
+      question: { prompt: "What finally made the neighborhood garden succeed?", options: ["Neighbors agreed on a shared watering schedule", "One person did all the work alone", "They planted only decorative flowers"], correct: 0 },
+      scene: "garden",
+      category: "Community",
+      text: "Our neighborhood tried to start a community garden on an empty lot for two summers in a row. The first summer, everyone planted whatever they wanted, and most of it withered from being forgotten. Nobody had agreed on who was responsible for watering on any given day. This year, a few of us organized a simple shared calendar so someone always had the job. We also agreed to plant things that could feed several families, not just one person's favorites. By midsummer, the lot was green with tomatoes, beans, and squash instead of dry dirt. Neighbors who had barely spoken before started trading vegetables and recipes over the fence. It turned out the garden never needed more plants — it needed a plan everyone actually followed.",
+    },
+    {
+      title: "The Band Audition",
+      question: { prompt: "What did the student realize after a tougher judge critiqued her audition?", options: ["Honest, specific feedback helped her improve faster than praise had", "The judge was simply being unkind", "She should quit the audition process entirely"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "I auditioned for the honors band with a piece I had practiced almost every day for a month. The first judge smiled and said it sounded lovely, which made me feel confident walking out. A second judge later pulled me aside and pointed out three specific places where my timing slipped. At first, her notes stung more than the first judge's compliment had felt good. But her feedback was exact enough that I could actually practice those three measures that same night. A week later, I played the same piece for my teacher, focusing only on those trouble spots. It sounded noticeably better, and I made the honors band on my second attempt. I learned that kind but vague praise feels nice, but specific, honest feedback is what actually makes you better.",
+    },
+    {
+      title: "The Ocean Cleanup Club",
+      question: { prompt: "What did the data from their beach cleanups reveal?", options: ["Most of the trash came from just a few everyday items", "The beach had no trash at all", "Cleanups make no measurable difference"], correct: 0 },
+      scene: "ocean",
+      category: "Nature",
+      text: "Our club organized a beach cleanup every month and carefully logged every item we collected. After six months, we had pages of data instead of just bags of trash. When we finally reviewed the numbers together, one pattern stood out immediately. Plastic bottle caps, straws, and food wrappers made up more than half of everything we found. Big dramatic items, like tires or furniture, were actually rare compared to these small everyday objects. We used our data to write a letter to the city council about plastic straws specifically. A few months later, several beachside restaurants switched to paper straws because of it. It turned out that just counting trash carefully taught us more than any single cleanup day had.",
     },
   ],
 };
@@ -2574,6 +2784,10 @@ const SCENE_STICKERS = {
   ocean: ["🌊", "🍾", "🏝️"],
   restaurant: ["🍽️", "👨‍🍳", "⏱️"],
   school: ["📚", "✏️", "🤝"],
+  art: ["🎨", "🖌️", "✨"],
+  museum: ["🏛️", "🦴", "📜"],
+  space: ["🚀", "🌙", "⭐"],
+  kitchen: ["🍲", "🥕", "👩‍🍳"],
 };
 
 function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride, extraHeaderContent }) {
@@ -2986,6 +3200,39 @@ function StoryIllustration({ scene }) {
         <path d="M60 108 Q70 70 86 72 Q98 74 96 94 Q94 108 110 108" stroke="#8B8499" strokeWidth="5" fill="none" strokeLinecap="round" />
         <rect x="120" y="58" width="40" height="50" rx="2" fill="#fff" stroke="#8E7CC3" strokeWidth="2" />
         <rect x="128" y="66" width="24" height="18" rx="2" fill="#D98551" opacity="0.7" />
+      </svg>
+    ),
+    space: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#1B1B3A" />
+        <circle cx="30" cy="25" r="2" fill="#fff" opacity="0.8" />
+        <circle cx="60" cy="15" r="1.5" fill="#fff" opacity="0.6" />
+        <circle cx="150" cy="30" r="2" fill="#fff" opacity="0.7" />
+        <circle cx="170" cy="60" r="1.5" fill="#fff" opacity="0.6" />
+        <circle cx="45" cy="70" r="1.5" fill="#fff" opacity="0.5" />
+        <circle cx="130" cy="18" r="14" fill="#E8B84B" opacity="0.85" />
+        <path d="M100 100 L92 118 L100 112 L108 118 Z" fill="#E8B84B" opacity="0.9" />
+        <path d="M86 112 L114 112 L108 80 Q100 68 92 80 Z" fill="#DCE4EE" />
+        <path d="M94 86 L106 86 L102 112 L98 112 Z" fill="#5B9BD1" opacity="0.6" />
+        <circle cx="100" cy="86" r="6" fill="#5B9BD1" />
+        <path d="M90 112 L82 128 L92 118 Z" fill="#D98551" />
+        <path d="M110 112 L118 128 L108 118 Z" fill="#D98551" />
+      </svg>
+    ),
+    kitchen: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#F5EFE6" />
+        <rect y="100" width="200" height="40" fill="#D9C6AE" />
+        <rect x="60" y="60" width="80" height="14" rx="2" fill="#8B8499" />
+        <ellipse cx="100" cy="90" rx="34" ry="12" fill="#3D6E96" />
+        <path d="M66 90 Q66 112 100 112 Q134 112 134 90 Z" fill="#5B9BD1" />
+        <ellipse cx="100" cy="88" rx="30" ry="9" fill="#7FA8C4" opacity="0.7" />
+        <circle cx="76" cy="66" r="4" fill="#D98551" />
+        <circle cx="90" cy="66" r="4" fill="#D98551" />
+        <circle cx="110" cy="66" r="4" fill="#D98551" />
+        <circle cx="124" cy="66" r="4" fill="#D98551" />
+        <rect x="150" y="70" width="22" height="30" rx="2" fill="#E8B84B" opacity="0.8" />
+        <rect x="154" y="64" width="14" height="8" rx="2" fill="#8B5F3C" />
       </svg>
     ),
   };
