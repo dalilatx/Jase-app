@@ -312,19 +312,36 @@ const STORIES = {
       title: "The Big Red Ball",
       question: { prompt: "What color was the ball?", options: ["Red", "Blue", "Yellow"], correct: 0 },
       scene: "ball",
+      category: "Everyday Life",
       text: "I see a big red ball. Is it little? No, it is not little! Can we play? Come here and play with me. We can run. We can jump up. Look, the ball can go up, up, up! Where did it go? I see it! Here it is. You and I can play all day.",
     },
     {
       title: "Three Little Yellow Birds",
       question: { prompt: "What color were the birds?", options: ["Blue", "Yellow", "Green"], correct: 1 },
       scene: "birds",
+      category: "Nature",
       text: "Look up! I see three little birds. They are yellow and blue. One bird can go away. Where did it go? I see it! It is here. Can you find the other two? Come and look with me. We can find them. Here they are! We can play in the sun.",
     },
     {
       title: "My Funny Dog",
       question: { prompt: "What did the dog do?", options: ["Jumped up and down", "Went to sleep", "Ate dinner"], correct: 0 },
       scene: "dog",
+      category: "Everyday Life",
       text: "I have a dog. My dog is funny! He can jump up and down. Down, down, down he goes. Then up, up, up! Look at my dog go. Can you see him? Yes, I see him! Come here, dog. We can play. I like my funny dog.",
+    },
+    {
+      title: "My Blue and Red Paint",
+      question: { prompt: "What two colors did the paint make?", options: ["Purple", "Green", "Orange"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "I have red paint. I have blue paint. Can I mix them? Yes, I can! Look, look! The red and the blue make purple. Purple is new! I can paint a big cat. I can paint a big sun. My paint is fun. Can you paint too? Come and paint with me.",
+    },
+    {
+      title: "Old Bones at the Museum",
+      question: { prompt: "What did they see at the museum?", options: ["Old bones", "A ball", "A dog"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "We go to the museum. Look up! Big old bones! They are so big. A long time ago, a big animal was here. It is not here now. Can we look more? Yes, we can! I see more old bones. I like the museum. We had fun today.",
     },
   ],
   "1": [
@@ -332,19 +349,36 @@ const STORIES = {
       title: "The Flying Kite",
       question: { prompt: "What did the kite do at the park?", options: ["It flew high", "It broke", "It got wet"], correct: 0 },
       scene: "kite",
+      category: "Everyday Life",
       text: "Every day I fly my kite. It is an old, round kite. My dad has one too. He said, let's fly them together. Then we walk over to the park. We put the kites up high. Once, my kite got stuck. I had to think of how to get it down. I gave a little pull and it came free. Just then, some wind came by. My kite could fly again! Thank you, wind.",
     },
     {
       title: "Grandma's Old Garden",
       question: { prompt: "What did the child help Grandma do?", options: ["Work in the garden", "Bake a cake", "Clean the house"], correct: 0 },
       scene: "garden",
+      category: "Family",
       text: "By the old fence, my grandma has a garden. Every spring, she would ask me to help. Could you give me a hand? I know just what to do. First, I open the gate. Then I take my little shovel. Some flowers need water. Others need me to stop and pull weeds. Over by the fence, an old rose grows tall. My grandma said, thank you for your help. Once we are done, we sit and think about how much fun we had.",
     },
     {
       title: "The Lost Puppy",
       question: { prompt: "Who found the puppy's owner?", options: ["An old man", "A teacher", "A police officer"], correct: 0 },
       scene: "puppy",
+      category: "Everyday Life",
       text: "Once, a little puppy got lost. He did not know his way home. Let me help you, I said. I put him in my arms. We walk from house to house. Has anyone seen this puppy? I would ask. Every person said no. Then, an old man came by. He said, that puppy is mine! Thank you for finding him. I was happy to help. Just then, the puppy licked my face. I think he was thanking me too.",
+    },
+    {
+      title: "The Seed in the Cup",
+      question: { prompt: "What did the seed need to grow?", options: ["Water and sun", "A new cup", "A song"], correct: 0 },
+      scene: "garden",
+      category: "Science",
+      text: "At school, we got a tiny seed. We put it in a cup of dirt. Will it grow? asked my friend. I did not know yet. Every day, I gave it a little water. I set it by the window for the sun. Nothing happened for three whole days. Then one morning, I saw a tiny green sprout. It grew and grew, taller each day. Our teacher said that is how all plants start. I am proud of my little green plant.",
+    },
+    {
+      title: "The Art Show",
+      question: { prompt: "What did the child paint for the show?", options: ["A picture of their family", "A picture of a cat", "A picture of a house"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "Our class is having an art show on Friday. I did not know what to paint at first. My teacher said, paint something you love. So I thought about it all day. That night, I picked my paints and got to work. I painted my mom, my dad, my dog, and me. On Friday, I hung it on the wall with the others. My family came to look at it. They said it was their favorite one there. I felt so proud of my painting.",
     },
   ],
   "2": [
@@ -352,19 +386,36 @@ const STORIES = {
       title: "The Best Day Ever",
       question: { prompt: "Where did the family go?", options: ["The fair", "The beach", "School"], correct: 0 },
       scene: "fair",
+      category: "Everyday Life",
       text: "It was the best day of the year because the fair had come to town. My little sister and I always look forward to it. First, we go on a fast ride. Then we walk around and look at the animals. Both of us want to buy cotton candy, but it costs five dollars. We found some money in our pockets. Which one do you want? asked the man. We could not decide, so we got one to share. Before we left, we watched a green bird sing. It was the best day we had had in a very long time.",
     },
     {
       title: "Grandpa's Garden Tale",
       question: { prompt: "What did Grandpa say the hills used to be covered in?", options: ["Green", "Snow", "Sand"], correct: 0 },
       scene: "hills",
+      category: "Family",
       text: "Grandpa told us these stories many times, but we never got tired of them. Long ago, he would begin, these hills were covered in green. He said the winters were very cold, and it would snow before the sun came up. His family did not have much, so they had to use what they found. They would wash their clothes by the river and read books at night. Right before bed, he would tell us to sleep well and always dream big. His stories made us want to sit and listen for hours.",
     },
     {
       title: "The Missing Kitten",
       question: { prompt: "Where was the kitten found?", options: ["In the bushes", "Under the bed", "In a tree"], correct: 0 },
       scene: "kitten",
+      category: "Everyday Life",
       text: "Our kitten was gone! We did not know where she went. Let's call for her, said Mom. We went around the yard and called her name. Because it was getting cold outside, we knew we had to hurry. Off in the bushes, we heard a tiny sound. It was our kitten! She had been stuck there the whole time. Don't worry, I said, picking her up. You are safe now. We gave her a warm bath to wash off the dirt. That night, she curled up and went right to sleep.",
+    },
+    {
+      title: "Grandpa's Old Toolbox",
+      question: { prompt: "What did Grandpa use the hammer for, long ago?", options: ["Building his family's house", "Fixing a car", "Playing a game"], correct: 0 },
+      scene: "hills",
+      category: "Family",
+      text: "Grandpa opened an old wooden box and we gathered close to see. Inside were tools with worn, smooth handles. This hammer, he said, built the house I grew up in. We asked him how, and he smiled and sat back in his chair. Long ago, he said, there were no big machines to help. His father and uncles worked together for a whole summer. They cut the wood by hand and carried it up the hill. Every board has a story, he told us, if you know how to listen. We held the old hammer and tried to imagine it.",
+    },
+    {
+      title: "The Art Show Ribbon",
+      question: { prompt: "What did the judges like best about her painting?", options: ["The bright colors she chose", "How big it was", "How fast she painted it"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "Every spring, our school holds an art show in the gym. This year, I painted a picture of the lake by our house. I used bright blue, yellow, and green paint to make it glow. My teacher said color can make a painting feel happy or calm. When the judges walked by, they stopped at my painting for a long time. They loved how the colors seemed to shine, one of them said. I won a blue ribbon for my painting. I hung it on my wall so I can see it every day.",
     },
   ],
   "3": [
@@ -372,19 +423,36 @@ const STORIES = {
       title: "The Treehouse Plan",
       question: { prompt: "What did they need to finish the treehouse?", options: ["More wood", "More rope", "More paint"], correct: 0 },
       scene: "treehouse",
+      category: "Everyday Life",
       text: "Today we tried to build a treehouse together. We had to carry the boards far across the yard. My brother is much better at hammering than I am, so he did that part. I would hold the wood and keep it straight. We did not laugh when a board fall down, because we were only halfway done. After about seven trips, we grew tired. If we want to finish, we need to bring more wood tomorrow. Never give up, my brother said. So we will try again in the light of morning.",
     },
     {
       title: "The Long Hike",
       question: { prompt: "Why did they stop walking?", options: ["To drink water", "It got dark", "They got lost"], correct: 0 },
       scene: "hills",
+      category: "Nature",
       text: "The trail was long, and the sun was hot. We had to keep going, but I wanted to stop. Only ten more minutes, said Dad. I did not believe him. My legs hurt and my shoes were full of dirt. Finally, we found a small stream and stopped to drink. The cold water was the best thing I had ever tasted. We sat together and looked far out over the valley. It was a kind of quiet you never get at home. Today was hard, but I am glad we did it.",
     },
     {
       title: "Cleaning Out the Garage",
       question: { prompt: "What did they find in the box?", options: ["Old drawings", "Money", "A toy car"], correct: 0 },
       scene: "garage",
+      category: "Everyday Life",
       text: "Mom asked us to clean the garage today. We had to cut open dozens of old boxes. Most were full of things nobody wanted to keep. But then I found a small box with my name on it. Inside were drawings I made when I was six. I had to laugh at how bad they were. Mom said she saved them because they were special to her. We showed them to Dad, and he grinned. Now the garage is clean, and we hung my old drawings on the wall.",
+    },
+    {
+      title: "The Old Train Station",
+      question: { prompt: "What does the town do with the old train station now?", options: ["It is a small museum", "It is torn down", "It is still a station"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "On our field trip, we visited the old train station in town. A hundred years ago, our guide said, trains stopped here every single day. Families would arrive with big trunks and wait on these same benches. Letters, mail, and even ice were shipped through this building. When trains stopped coming, the station almost got torn down. Instead, people in town decided to turn it into a small museum. Now the old ticket counter and schedule board are still here to see. Standing in that room, I tried to imagine the noise of a hundred years ago.",
+    },
+    {
+      title: "Bug Hunt in the Backyard",
+      question: { prompt: "What did they use to study the bugs closely?", options: ["A magnifying glass", "A microscope", "Binoculars"], correct: 0 },
+      scene: "garden",
+      category: "Science",
+      text: "For our science project, we had to study bugs in our own backyard. My partner and I got a jar, a notebook, and a magnifying glass. Under a rock, we found a pill bug that curled into a tiny ball. Near the flowers, a bee moved from petal to petal, collecting pollen. We wrote down what each bug looked like and where we found it. Some bugs have six legs, my partner noticed, and some have more. Our teacher explained that counting legs helps scientists sort living things into groups. By the end, we had found twelve different kinds of bugs.",
     },
   ],
   "4": [
@@ -392,19 +460,36 @@ const STORIES = {
       title: "The Science Fair Surprise",
       question: { prompt: "Why was her project different?", options: ["She measured the results herself", "It was the biggest", "It cost the most"], correct: 0 },
       scene: "science",
+      category: "Science",
       text: "Maya was probably the most nervous person in the whole gym. Her project was not the largest one there, and it was certainly not the most beautiful. But she had spent a complete month measuring how different amounts of light affected her plants. She had written down every answer she found, even the surprising ones. When the judges came, she explained her rhythm of checking the plants each morning. Although her hands shook, her voice stayed straight and clear. The judges asked question after question. Finally, one of them smiled. Real science, he said, is exactly this.",
     },
     {
       title: "The Mountain Trail",
       question: { prompt: "What made them turn back?", options: ["The weather changed", "They ran out of food", "It got too dark"], correct: 0 },
       scene: "hills",
+      category: "Nature",
       text: "The trail up the mountain was steeper than anyone expected. Our neighbor had climbed it before and said it was important to start early. We had enough water and food for the whole day. About halfway up, the weather began to change. Dark clouds moved across the sky, and the temperature dropped quickly. Although we wanted to reach the top, Dad said we had to decide. Getting caught in a storm on a narrow trail is dangerous. So we turned around. It was disappointing, but usually the right choice is not the easy one.",
     },
     {
       title: "The Island Letter",
       question: { prompt: "Who wrote the letter in the bottle?", options: ["A girl from another island", "A sailor", "Nobody knows"], correct: 0 },
       scene: "ocean",
+      category: "Adventure",
       text: "We found the bottle washed up on the beach after the storm. Inside was a letter, folded into a small square. The handwriting was different from ours, and some words were hard to read. Whoever wrote it lived on an island across the ocean. She described her favorite place to watch the weather roll in, and asked whoever found the letter to write back. We could not believe it. Mom helped us find the island on a map. That afternoon, we wrote a complete answer, sealed it up, and mailed it. Now we are waiting.",
+    },
+    {
+      title: "The One-Room Schoolhouse",
+      question: { prompt: "What was different about school a hundred years ago, in the story?", options: ["One teacher taught every grade in one room", "Students had no books at all", "School only lasted one week"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "Our class visited a one-room schoolhouse that is kept exactly as it was a hundred years ago. The guide explained that a single teacher taught every grade, from six-year-olds to teenagers, in that same small room. Older students often helped the younger ones with their reading and arithmetic. Students walked for miles each day, even in snow, because there was no school bus. We saw the same kind of slate boards students used instead of paper, since paper was expensive. It made me think about how much easier getting to school is for us now. Still, the guide said, students back then were just as curious as we are. Some things about learning, it turns out, never really change.",
+    },
+    {
+      title: "The Community Mural",
+      question: { prompt: "What was the artist's plan for the mural?", options: ["Let neighbors help paint parts of it", "Paint it alone overnight", "Copy a painting from a book"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "A local artist came to paint a mural on the wall of our community center. Instead of painting it alone, she asked neighbors to help fill in sections she had outlined. My job was to paint part of a bright orange sun in the corner. An older man down the street painted a row of houses, since he had lived there his whole life. The artist explained that murals work best when they show what a neighborhood actually loves. By the end of the weekend, dozens of people had added their own brushstrokes. Now, whenever I walk past, I can point to the small patch of sky that is mine. It does not feel like just her mural anymore. It feels like ours.",
     },
   ],
   "5": [
@@ -412,19 +497,36 @@ const STORIES = {
       title: "The Restaurant Job",
       question: { prompt: "What did he learn from the job?", options: ["How to work with a team", "How to cook", "How to save money"], correct: 0 },
       scene: "restaurant",
+      category: "Everyday Life",
       text: "My older sister got me a job helping at the restaurant where she works. I was definitely nervous on the first day. The kitchen has its own rhythm, and everyone knows their particular role. At the beginning, I was frequently in the way. It would embarrass me when someone had to interrupt their work to move around me. But the head cook was patient. It is necessary, he said, to watch before you act. By the end of the week, I could anticipate what people needed. That, more than anything, was the real success.",
     },
     {
       title: "The Independent Study",
       question: { prompt: "Why did her topic change?", options: ["Her first idea was too broad", "She lost interest", "Her teacher said no"], correct: 0 },
       scene: "science",
+      category: "Science",
       text: "For our independent study, we could choose any topic we wanted. I decided to research how temperature affects the local environment. My teacher immediately recommended that I narrow it down. Your idea is interesting, she said, but it is far too broad to describe well. At first I was frustrated. But when I began reading, I understood. There was so much information that I could not possibly cover all of it. So I chose one particular question about a single stream near my house. It was a much better project because of it.",
     },
     {
       title: "The Argument",
       question: { prompt: "How did they resolve the disagreement?", options: ["They each listened to the other side", "One person gave in", "They stopped talking"], correct: 0 },
       scene: "school",
+      category: "Everyday Life",
       text: "My friend and I had a serious argument about the class project. We had completely opposite ideas about how to begin. I was certain my approach was correct, and she was equally certain about hers. For two days we barely spoke, which was embarrassing for both of us. Finally, our teacher suggested something simple. Each of you, she said, describe the other person's idea back to them. It felt strange, but it worked. I realized her plan solved a problem mine did not. In the end, we combined them, and the project was better than either version.",
+    },
+    {
+      title: "The Time Capsule",
+      question: { prompt: "Why did the class choose a letter to a future student?", options: ["To describe what life is like right now", "Because it was the easiest item", "Because their teacher wrote it for them"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "Our whole class decided to bury a time capsule behind the school, to be opened in fifty years. Everyone argued about what to include, since the box could only hold so much. Someone suggested a phone, but our teacher pointed out that technology changes too quickly to mean much later. In the end, we agreed on a class photo, a newspaper, and a letter describing an ordinary day in our lives. Writing that letter made me notice details I never think about, like how we get our information or what our town sounds like. A hundred small things that feel normal to us might seem strange to someone in fifty years. History, our teacher said, is really just somebody's ordinary day, written down. We sealed the box and buried it on a cold, bright morning.",
+    },
+    {
+      title: "The Portfolio Review",
+      question: { prompt: "What did the teacher say made the student's growth visible?", options: ["Keeping early, rougher pieces alongside newer ones", "Only showing the newest painting", "Copying a famous artist exactly"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "At the end of the year, our art teacher asked us to put together a portfolio of our best work. I almost threw out my pieces from September, since they looked rough compared to my recent ones. My teacher stopped me. Keep those, she said. They show where you started. When I laid everything out in order, I could actually see how my linework had steadied and my colors had grown more confident. A piece I once thought was my best now looked clumsy next to my newest painting. Growth is hard to see day by day, she explained, but it is obvious once you step back. I arranged the portfolio from my very first sketch to my latest piece. For the first time, I felt proud of the whole journey, not just the final painting.",
     },
   ],
 };
@@ -1271,7 +1373,7 @@ function ReadingSection({ onSwitchSubject, startGrade }) {
       {screen === "smartPractice" && <SmartPracticeMode grade={grade} pool={missedPool} onMaster={markMastered} onExit={goHome} />}
       {screen === "jokes" && <JokesMode grade={grade} onExit={goHome} />}
 
-      {screen !== "home" && !onBreak && (
+      {screen !== "home" && screen !== "balloons" && !onBreak && (
         <div
           className="fixed top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black"
           style={{ background: "#2B2250", color: "#fff", zIndex: 45 }}
@@ -2144,6 +2246,7 @@ function BalloonPopMode({ grade, onExit }) {
   const COLUMNS = ["#8E7CC3", "#5B9BD1", "#6FAE8B", "#D98551", "#E8B84B"];
   const { takeOne } = useWordQueue(words);
   const [phase, setPhase] = useState("intro");
+  const [roundMode, setRoundMode] = useState("short"); // "short" | "infinite"
   const [timeLeft, setTimeLeft] = useState(ROUND);
   const [score, setScore] = useState(0);
   const [target, setTarget] = useState(words[0]);
@@ -2156,16 +2259,18 @@ function BalloonPopMode({ grade, onExit }) {
   useEffect(() => {
     if (phase !== "playing") return;
     speak(target);
-    const timerId = setInterval(() => {
+    // Short Round: the clock runs out and ends the game. Infinite Round has
+    // no clock — play keeps going until the player taps Finish.
+    const timerId = roundMode === "short" ? setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) { setPhase("done"); return 0; }
         return t - 1;
       });
-    }, 1000);
+    }, 1000) : null;
     const spawnId = setInterval(() => {
       spawnBalloon();
     }, calm ? 1700 : 1100);
-    return () => { clearInterval(timerId); clearInterval(spawnId); };
+    return () => { if (timerId) clearInterval(timerId); clearInterval(spawnId); };
   }, [phase]); // eslint-disable-line
 
   function spawnBalloon() {
@@ -2181,7 +2286,8 @@ function BalloonPopMode({ grade, onExit }) {
     }, duration * 1000 + 50);
   }
 
-  function startRound() {
+  function startRound(mode) {
+    setRoundMode(mode);
     setScore(0);
     setTimeLeft(ROUND);
     setBalloons([]);
@@ -2209,7 +2315,14 @@ function BalloonPopMode({ grade, onExit }) {
           <div className="text-5xl mb-4">🎈</div>
           <h2 className="text-xl font-black mb-2" style={{ color: "#2B2250" }}>Ready to pop some words?</h2>
           <p className="text-sm mb-6" style={{ color: "#8B8499" }}>I'll say a word. Pop the balloon with that word before it floats away!</p>
-          <button onClick={startRound} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: "#2B2250" }}>Start Game</button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button onClick={() => startRound("short")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#2B2250" }}>
+              <span>⏱ Short Round</span><span className="text-[10px] font-bold opacity-75">{ROUND} seconds</span>
+            </button>
+            <button onClick={() => startRound("infinite")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#D98551" }}>
+              <span>∞ Infinite</span><span className="text-[10px] font-bold opacity-75">Play till you're done</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -2237,12 +2350,12 @@ function BalloonPopMode({ grade, onExit }) {
       <style>{`
         @keyframes floatUp { from { bottom: -12%; } to { bottom: 105%; } }
       `}</style>
-      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #EEE6D6", paddingRight: 84 }}>
+      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #EEE6D6" }}>
         <button onClick={onExit} className="kbtn flex items-center gap-1.5 font-bold text-sm px-3 py-2 rounded-full" style={{ color: "#2B2250", background: "#EEE6D6" }}>
           <Home size={16} /> Home
         </button>
         <div className="text-xs font-black" style={{ color: "#2B2250" }}>Score: {score}</div>
-        <div className="text-xs font-black" style={{ color: "#D98551" }}>⏱ {timeLeft}s</div>
+        <div className="text-xs font-black" style={{ color: "#D98551" }}>{roundMode === "short" ? `⏱ ${timeLeft}s` : "∞ Infinite"}</div>
       </div>
 
       <button onClick={() => speak(target)} className="kbtn mx-4 mt-3 rounded-2xl py-3 flex items-center justify-center gap-2 shrink-0" style={{ background: "#2B2250" }}>
@@ -2280,6 +2393,11 @@ function BalloonPopMode({ grade, onExit }) {
           </button>
         ))}
       </div>
+      {roundMode === "infinite" && (
+        <button onClick={() => setPhase("done")} className="kbtn mx-4 mb-3 py-2.5 rounded-xl font-black text-sm shrink-0" style={{ background: "#EEE6D6", color: "#2B2250" }}>
+          Finish
+        </button>
+      )}
     </div>
   );
 }
@@ -2323,7 +2441,10 @@ function StoriesMode({ grade, onExit }) {
               </div>
               <div className="flex-1">
                 <div className="font-black text-base" style={{ color: "#2B2250" }}>{s.title}</div>
-                <div className="text-xs" style={{ color: "#8B8499" }}>{s.text.split(" ").length} words</div>
+                <div className="text-xs flex items-center gap-1.5" style={{ color: "#8B8499" }}>
+                  {s.category && <span className="px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${color}22`, color }}>{s.category}</span>}
+                  <span>{s.text.split(" ").length} words</span>
+                </div>
               </div>
               <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
             </button>
@@ -2824,6 +2945,35 @@ function StoryIllustration({ scene }) {
         <rect x="116" y="92" width="42" height="8" rx="2" fill="#8E7CC3" />
       </svg>
     ),
+    art: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#FBF6EC" />
+        <rect y="118" width="200" height="22" fill="#D6CDBD" />
+        <path d="M80 30 L120 30 L112 110 L88 110 Z" fill="#B5804F" />
+        <rect x="70" y="106" width="60" height="8" rx="2" fill="#8B5F3C" />
+        <rect x="86" y="46" width="28" height="36" rx="2" fill="#fff" stroke="#C9C2D6" strokeWidth="2" />
+        <circle cx="96" cy="58" r="5" fill="#D98551" />
+        <circle cx="106" cy="68" r="5" fill="#5B9BD1" />
+        <circle cx="96" cy="74" r="5" fill="#E8B84B" />
+        <ellipse cx="48" cy="112" rx="16" ry="7" fill="#C9BFAE" />
+        <circle cx="40" cy="112" r="4.5" fill="#D98551" />
+        <circle cx="50" cy="112" r="4.5" fill="#5B9BD1" />
+        <circle cx="58" cy="112" r="4.5" fill="#6FAE8B" />
+      </svg>
+    ),
+    museum: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#EFEAE0" />
+        <rect y="112" width="200" height="28" fill="#D6CDBD" />
+        <rect x="20" y="30" width="160" height="14" fill="#B5804F" />
+        {[36, 70, 104, 138, 168].map((x, i) => (
+          <rect key={i} x={x} y="44" width="8" height="68" fill="#C9BFAE" />
+        ))}
+        <path d="M60 108 Q70 70 86 72 Q98 74 96 94 Q94 108 110 108" stroke="#8B8499" strokeWidth="5" fill="none" strokeLinecap="round" />
+        <rect x="120" y="58" width="40" height="50" rx="2" fill="#fff" stroke="#8E7CC3" strokeWidth="2" />
+        <rect x="128" y="66" width="24" height="18" rx="2" fill="#D98551" opacity="0.7" />
+      </svg>
+    ),
   };
 
   return scenes[scene] || (
@@ -2962,13 +3112,9 @@ function SentenceBuilderMode({ grade, onExit }) {
     }
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", up);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      window.removeEventListener("touchmove", move);
-      window.removeEventListener("touchend", up);
     };
   }, [drag]); // eslint-disable-line
 
@@ -3040,7 +3186,6 @@ function SentenceBuilderMode({ grade, onExit }) {
               key={w.id}
               ref={(el) => { if (el) tileRefs.current[w.id] = el; }}
               onPointerDown={(e) => onTileDown(e, w, "built")}
-              onTouchStart={(e) => onTileDown(e, w, "built")}
               className="kbtn px-3 py-1.5 rounded-lg font-bold text-sm text-white touch-none"
               style={{ background: color, opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}
             >
@@ -3054,7 +3199,6 @@ function SentenceBuilderMode({ grade, onExit }) {
             <button
               key={w.id}
               onPointerDown={(e) => onTileDown(e, w, "bank")}
-              onTouchStart={(e) => onTileDown(e, w, "bank")}
               className="kbtn px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 touch-none"
               style={{ background: "#EEE6D6", color: "#2B2250", opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}
             >
@@ -4001,7 +4145,7 @@ function MathSection({ onSwitchSubject, startGrade }) {
       {screen === "report" && <MathProgressReport progress={progress} onExit={goHome} />}
       {screen === "needsPractice" && <MathNeedsPracticeMode pool={missedPool} onMaster={markMastered} onSolved={removeMiss} onExit={goHome} />}
 
-      {screen !== "home" && !onBreak && (
+      {screen !== "home" && screen !== "balloons" && !onBreak && (
         <div className="fixed top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#1B2430", color: "#fff", zIndex: 45 }}>
           <Clock size={12} /> {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
         </div>
@@ -4683,6 +4827,7 @@ function BalloonPopMathMode({ grade, onExit }) {
   const COLUMNS = ["#2F4FB2", "#4C6FD1", "#1C2E6B", "#1D7A4C", "#2E9E6B"];
   const queueRef = useRef([]);
   const [phase, setPhase] = useState("intro");
+  const [roundMode, setRoundMode] = useState("short"); // "short" | "infinite"
   const [timeLeft, setTimeLeft] = useState(ROUND);
   const [score, setScore] = useState(0);
   const [fact, setFact] = useState(factList(grade)[0]);
@@ -4700,14 +4845,16 @@ function BalloonPopMathMode({ grade, onExit }) {
   useEffect(() => {
     if (phase !== "playing") return;
     mathSpeak(factSpeech(fact));
-    const timerId = setInterval(() => {
+    // Short Round: the clock runs out and ends the game. Infinite Round has
+    // no clock — play keeps going until the player taps Finish.
+    const timerId = roundMode === "short" ? setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) { setPhase("done"); return 0; }
         return t - 1;
       });
-    }, 1000);
+    }, 1000) : null;
     const spawnId = setInterval(() => { spawnBalloon(); }, calm ? 1800 : 1200);
-    return () => { clearInterval(timerId); clearInterval(spawnId); };
+    return () => { if (timerId) clearInterval(timerId); clearInterval(spawnId); };
   }, [phase]); // eslint-disable-line
 
   function decoyAnswer(correct) {
@@ -4727,7 +4874,8 @@ function BalloonPopMathMode({ grade, onExit }) {
     setTimeout(() => setBalloons((b) => b.filter((bal) => bal.id !== id)), duration * 1000 + 50);
   }
 
-  function startRound() {
+  function startRound(mode) {
+    setRoundMode(mode);
     setScore(0);
     setTimeLeft(ROUND);
     setBalloons([]);
@@ -4755,7 +4903,14 @@ function BalloonPopMathMode({ grade, onExit }) {
           <div className="text-5xl mb-4">🎈</div>
           <h2 className="text-xl font-black mb-2" style={{ color: "#1B2430" }}>Ready to pop some answers?</h2>
           <p className="text-sm mb-6" style={{ color: "#5B6B7A" }}>I'll say a problem. Pop the balloon with the right answer before it floats away!</p>
-          <button onClick={startRound} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: "#1B2430" }}>Start Game</button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button onClick={() => startRound("short")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#1B2430" }}>
+              <span>⏱ Short Round</span><span className="text-[10px] font-bold opacity-75">{ROUND} seconds</span>
+            </button>
+            <button onClick={() => startRound("infinite")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#2E9E6B" }}>
+              <span>∞ Infinite</span><span className="text-[10px] font-bold opacity-75">Play till you're done</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -4781,12 +4936,12 @@ function BalloonPopMathMode({ grade, onExit }) {
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={{ background: "#F5F8FC", height: "100dvh" }}>
       <style>{`@keyframes floatUp { from { bottom: -12%; } to { bottom: 105%; } }`}</style>
-      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #C0392B", paddingRight: 84 }}>
+      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #C0392B" }}>
         <button onClick={onExit} className="kbtn flex items-center gap-1.5 font-bold text-sm px-3 py-2 rounded-full" style={{ color: "#1B2430", background: "#E7ECFA" }}>
           <Home size={16} /> Home
         </button>
         <div className="text-xs font-black" style={{ color: "#1B2430" }}>Score: {score}</div>
-        <div className="text-xs font-black" style={{ color: "#D98551" }}>⏱ {timeLeft}s</div>
+        <div className="text-xs font-black" style={{ color: "#D98551" }}>{roundMode === "short" ? `⏱ ${timeLeft}s` : "∞ Infinite"}</div>
       </div>
 
       <button onClick={() => mathSpeak(factSpeech(fact))} className="kbtn mx-4 mt-3 rounded-2xl py-3 flex items-center justify-center gap-2 shrink-0" style={{ background: "#1B2430" }}>
@@ -4819,6 +4974,11 @@ function BalloonPopMathMode({ grade, onExit }) {
           </button>
         ))}
       </div>
+      {roundMode === "infinite" && (
+        <button onClick={() => setPhase("done")} className="kbtn mx-4 mb-3 py-2.5 rounded-xl font-black text-sm shrink-0" style={{ background: "#E7ECFA", color: "#1B2430" }}>
+          Finish
+        </button>
+      )}
     </div>
   );
 }
@@ -5165,13 +5325,9 @@ function EquationBuilderMode({ grade, onExit }) {
     }
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", up);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      window.removeEventListener("touchmove", move);
-      window.removeEventListener("touchend", up);
     };
   }, [drag]); // eslint-disable-line
 
@@ -5246,7 +5402,7 @@ function EquationBuilderMode({ grade, onExit }) {
           {built.length === 0 && <span className="text-xs" style={{ color: "#E8A69C" }}>Drag the tiles here to build the equation</span>}
           {built.map((w) => (
             <button key={w.id} ref={(el) => { if (el) tileRefs.current[w.id] = el; }}
-              onPointerDown={(e) => onTileDown(e, w, "built")} onTouchStart={(e) => onTileDown(e, w, "built")}
+              onPointerDown={(e) => onTileDown(e, w, "built")}
               className="kbtn px-4 py-2 rounded-lg font-black text-lg text-white touch-none"
               style={{ background: color, opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}>
               {w.text}
@@ -5256,7 +5412,7 @@ function EquationBuilderMode({ grade, onExit }) {
 
         <div className="flex flex-wrap gap-2 justify-center mb-2">
           {bank.map((w) => (
-            <button key={w.id} onPointerDown={(e) => onTileDown(e, w, "bank")} onTouchStart={(e) => onTileDown(e, w, "bank")}
+            <button key={w.id} onPointerDown={(e) => onTileDown(e, w, "bank")}
               className="kbtn px-4 py-2.5 rounded-lg font-black text-lg flex items-center gap-1.5 touch-none"
               style={{ background: "#E7ECFA", color: "#1B2430", opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}>
               {w.text}
