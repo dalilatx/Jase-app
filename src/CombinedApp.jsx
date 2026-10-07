@@ -6434,7 +6434,7 @@ function UpperSpeedRound({ subject, grade, cards, onBack, onExit }) {
     return () => clearInterval(id);
   }, [phase]);
 
-  function start() { setScore(0); setTimeLeft(ROUND); setPhase("playing"); nextQuestion(); }
+  function start() { setScore(0); setTimeLeft(ROUND); queueRef.current = []; setPhase("playing"); nextQuestion(); }
 
   function choose(i) {
     if (picked !== null) return;
@@ -6684,14 +6684,14 @@ function UpperMemoryMatch({ subject, grade, cards: sourceCards, onBack, onExit }
   );
 }
 
-function UpperNeedsPracticeMode({ subject, pool, extraCards, onSolved, onExit, onBack }) {
+function UpperNeedsPracticeMode({ subject, grade, pool, extraCards, onSolved, onExit, onBack }) {
   const s = UPPER_SUBJECTS[subject];
   const color = "#8E5A6B";
   // Resolve each missed item back to its full card (with distractors), and
   // draw distractor options from the whole subject so choices stay varied.
   const [state] = useState(() => {
     const items = pool
-      .filter((m) => m.subject === subject)
+      .filter((m) => m.subject === subject && m.grade === grade)
       .map((m) => ({ ...m, card: findUpperCard(m.subject, m.grade, m.topicId, m.q) || (m.q && m.a ? { q: m.q, a: m.a, topicId: m.topicId } : null) }))
       .filter((m) => m.card);
     const distractorPool = [...UPPER_GRADES.flatMap((g) => upperCards(subject, g)), ...(extraCards || [])];
@@ -6815,7 +6815,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
   }
   function removeMiss(topicId, q) {
     setMissedPool((prev) => {
-      const next = prev.filter((m) => !(m.subject === subject && m.topicId === topicId && m.q === q));
+      const next = prev.filter((m) => !(m.subject === subject && m.grade === grade && m.topicId === topicId && m.q === q));
       saveMissedPool(next);
       return next;
     });
@@ -6854,7 +6854,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
 
   const topics = subject ? upperTopicsFor(subject, grade, aiLessons) : [];
   const gradeCards = subject ? cardsFromTopics(topics) : [];
-  const missedCountForSubject = subject ? missedPool.filter((m) => m.subject === subject).length : 0;
+  const missedCountForSubject = subject ? missedPool.filter((m) => m.subject === subject && m.grade === grade).length : 0;
 
   function openSubject(key) { setSubject(key); setView("topics"); }
   function openTopic(t) { setActiveTopic(t); setView("lesson"); }
@@ -6917,7 +6917,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
         <UpperMemoryMatch subject={subject} grade={grade} cards={gradeCards} onBack={goTopics} onExit={goSubjects} />
       )}
       {view === "needsPractice" && subject && (
-        <UpperNeedsPracticeMode subject={subject} pool={missedPool} extraCards={gradeCards} onSolved={removeMiss} onBack={goTopics} onExit={goSubjects} />
+        <UpperNeedsPracticeMode subject={subject} grade={grade} pool={missedPool} extraCards={gradeCards} onSolved={removeMiss} onBack={goTopics} onExit={goSubjects} />
       )}
     </div>
   );
