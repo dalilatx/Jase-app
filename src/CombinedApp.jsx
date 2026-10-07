@@ -2253,6 +2253,7 @@ function BalloonPopMode({ grade, onExit }) {
   const [balloons, setBalloons] = useState([]);
   const balloonId = useRef(0);
   const targetRef = useRef(words[0]);
+  const poppedIds = useRef(new Set());
 
   useEffect(() => { targetRef.current = target; }, [target]);
 
@@ -2291,6 +2292,7 @@ function BalloonPopMode({ grade, onExit }) {
     setScore(0);
     setTimeLeft(ROUND);
     setBalloons([]);
+    poppedIds.current.clear();
     const t = takeOne();
     setTarget(t);
     setPhase("playing");
@@ -2298,6 +2300,8 @@ function BalloonPopMode({ grade, onExit }) {
 
   function popBalloon(id, word) {
     if (word !== target) return;
+    if (poppedIds.current.has(id)) return; // a fast double-tap already popped this one
+    poppedIds.current.add(id);
     setScore((s) => s + 1);
     setBalloons((b) => b.filter((bal) => bal.id !== id));
     playChime(true);
@@ -2338,7 +2342,7 @@ function BalloonPopMode({ grade, onExit }) {
           <p className="text-sm mb-6" style={{ color: "#8B8499" }}>Great job finding those words.</p>
           <div className="flex gap-2">
             <button onClick={onExit} className="kbtn flex-1 py-3 rounded-xl font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}><Home size={16} className="inline mr-1.5" /> Home</button>
-            <button onClick={startRound} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#2B2250" }}><RotateCcw size={16} /> Play Again</button>
+            <button onClick={() => startRound(roundMode)} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#2B2250" }}><RotateCcw size={16} /> Play Again</button>
           </div>
         </div>
       </div>
@@ -4834,6 +4838,7 @@ function BalloonPopMathMode({ grade, onExit }) {
   const [balloons, setBalloons] = useState([]);
   const balloonId = useRef(0);
   const factRef = useRef(fact);
+  const poppedIds = useRef(new Set());
 
   useEffect(() => { factRef.current = fact; }, [fact]);
 
@@ -4879,6 +4884,7 @@ function BalloonPopMathMode({ grade, onExit }) {
     setScore(0);
     setTimeLeft(ROUND);
     setBalloons([]);
+    poppedIds.current.clear();
     const f = takeOne();
     setFact(f);
     setPhase("playing");
@@ -4886,6 +4892,8 @@ function BalloonPopMathMode({ grade, onExit }) {
 
   function popBalloon(id, value) {
     if (value !== fact.answer) return;
+    if (poppedIds.current.has(id)) return; // a fast double-tap already popped this one
+    poppedIds.current.add(id);
     setScore((s) => s + 1);
     setBalloons((b) => b.filter((bal) => bal.id !== id));
     playChime(true);
@@ -4926,7 +4934,7 @@ function BalloonPopMathMode({ grade, onExit }) {
           <p className="text-sm mb-6" style={{ color: "#5B6B7A" }}>Great job solving those problems.</p>
           <div className="flex gap-2">
             <button onClick={onExit} className="kbtn flex-1 py-3 rounded-xl font-black" style={{ background: "#E7ECFA", color: "#1B2430" }}><Home size={16} className="inline mr-1.5" /> Home</button>
-            <button onClick={startRound} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#1B2430" }}><RotateCcw size={16} /> Play Again</button>
+            <button onClick={() => startRound(roundMode)} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#1B2430" }}><RotateCcw size={16} /> Play Again</button>
           </div>
         </div>
       </div>
