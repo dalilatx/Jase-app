@@ -741,6 +741,85 @@ const STORIES = {
   ],
 };
 
+// Jokes used to be written by the AI on the spot, which meant Joke Time
+// simply didn't work at all whenever the AI backend wasn't set up or was
+// having a bad day. A kid can't tell the difference between "broken" and
+// "waiting on a grown-up to fix something in Supabase" - it just means no
+// jokes. These are built in, so Joke Time always works, no AI required.
+const JOKES = {
+  K: [
+    { setup: "Why did the cat sit on the computer?", punchline: "To watch the mouse!" },
+    { setup: "What do you call a sleepy dog?", punchline: "A dog-nap!" },
+    { setup: "What do you say to a big red ball?", punchline: "Nothing, it can't hear you!" },
+    { setup: "Why did the bird go to school?", punchline: "To learn to tweet!" },
+    { setup: "What do you call a fish with no eyes?", punchline: "A fsh!" },
+    { setup: "Why is six afraid of seven?", punchline: "Because seven eight nine!" },
+    { setup: "What goes up but never comes down?", punchline: "Your age!" },
+    { setup: "Why did the kitten stop running?", punchline: "It ran out of juice!" },
+  ],
+  "1": [
+    { setup: "Why did the kite go to the doctor?", punchline: "It felt a little under the weather!" },
+    { setup: "What did one wall say to the other wall?", punchline: "I'll meet you at the corner!" },
+    { setup: "Why can't your nose be 12 inches long?", punchline: "Because then it would be a foot!" },
+    { setup: "What has to be broken before you can use it?", punchline: "An egg!" },
+    { setup: "Why did the puppy sit in the shade?", punchline: "It didn't want to be a hot dog!" },
+    { setup: "What kind of garden does a baker have?", punchline: "A flour garden!" },
+    { setup: "Why did the boy bring a ladder to school?", punchline: "He wanted to go to high school!" },
+    { setup: "What did the ocean say to the beach?", punchline: "Nothing, it just waved!" },
+  ],
+  "2": [
+    { setup: "Why did the kid bring a ladder to the fair?", punchline: "He heard the prices were sky high!" },
+    { setup: "What do you call a bear with no teeth?", punchline: "A gummy bear!" },
+    { setup: "Why was the cat afraid of the tree?", punchline: "Because of its bark!" },
+    { setup: "What did the grandpa say about his garden?", punchline: "It's growing on me!" },
+    { setup: "Why did the kitten bring string to the picnic?", punchline: "In case she needed to tie up loose ends!" },
+    { setup: "What do you call a dinosaur that never gives up?", punchline: "A try-ceratops!" },
+    { setup: "Why did the picture go to jail?", punchline: "Because it was framed!" },
+    { setup: "What's a scarecrow's favorite fruit?", punchline: "Straw-berries!" },
+  ],
+  "3": [
+    { setup: "Why did the treehouse builder bring a ladder to the hike?", punchline: "He was taking his work to new heights!" },
+    { setup: "What do you call a group of musical whales?", punchline: "An orca-stra!" },
+    { setup: "Why did the garage mechanic stay calm?", punchline: "He knew how to handle pressure!" },
+    { setup: "What did the science teacher say to the class?", punchline: "Let's get to the root of this problem!" },
+    { setup: "Why don't scientists trust atoms?", punchline: "Because they make up everything!" },
+    { setup: "What do you call a bug hiding in a clock?", punchline: "A ticking insect!" },
+    { setup: "Why did the hiker bring a pencil up the mountain?", punchline: "To draw the curtains when it got dark!" },
+    { setup: "What's the quietest kind of race?", punchline: "A hush hour race!" },
+  ],
+  "4": [
+    { setup: "Why did the science fair project break up with the magnet?", punchline: "It just didn't feel the attraction anymore!" },
+    { setup: "Why did the letter in the bottle apologize?", punchline: "It felt a little washed up!" },
+    { setup: "What do you call a mountain that tells jokes?", punchline: "Hill-arious!" },
+    { setup: "Why did the plant file a police report?", punchline: "It got robbed of its roots!" },
+    { setup: "What did one ocean say to the other?", punchline: "Nothing, they just waved and let it go!" },
+    { setup: "Why was the robot so bad at soccer?", punchline: "It kept kicking up sparks instead of goals!" },
+    { setup: "Why did the storm cloud bring a suitcase?", punchline: "It was planning to make it rain somewhere else!" },
+    { setup: "What's a mountain's favorite kind of candy?", punchline: "Boulder-dash!" },
+  ],
+  "5": [
+    { setup: "Why did the restaurant hire a math teacher?", punchline: "To help split the bill!" },
+    { setup: "Why did the independent study get an award?", punchline: "It really stood on its own!" },
+    { setup: "What did one debate team say to the other?", punchline: "Let's agree to disagree... loudly!" },
+    { setup: "Why did the portfolio artist bring a ladder?", punchline: "To reach new levels of creativity!" },
+    { setup: "Why did the coding team stay up all night?", punchline: "They were debugging their sleep schedule!" },
+    { setup: "What do you call an argument between two clocks?", punchline: "A difference of opinion, but they're never on time about it!" },
+    { setup: "Why did the ocean cleanup club bring a map?", punchline: "To know exactly where to draw the line on pollution!" },
+    { setup: "Why don't skeletons ever argue in school?", punchline: "They don't have the guts!" },
+  ],
+};
+function pickJoke(grade, lastSetup) {
+  const list = JOKES[grade] || JOKES.K;
+  if (list.length === 1) return list[0];
+  let pick = list[Math.floor(Math.random() * list.length)];
+  // Avoid showing the exact same joke twice in a row when hitting "Another One".
+  let guard = 0;
+  while (pick.setup === lastSetup && guard < 10) {
+    pick = list[Math.floor(Math.random() * list.length)];
+    guard++;
+  }
+  return pick;
+}
 
 // ============================================================
 // UPPER GRADES (4th-5th): all four subjects, Albert-style
@@ -3244,24 +3323,13 @@ function StoryIllustration({ scene }) {
 
 function JokesMode({ grade, onExit }) {
   const color = "#E8B84B";
-  const [joke, setJoke] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [joke, setJoke] = useState(() => pickJoke(grade, null));
   const [revealed, setRevealed] = useState(false);
 
-  async function fetchJoke() {
-    setLoading(true);
-    setError(false);
+  function nextJoke() {
+    setJoke((prev) => pickJoke(grade, prev && prev.setup));
     setRevealed(false);
-    const words = shuffle(WORD_LISTS[grade]).slice(0, 10).join(", ");
-    const prompt = `Write one short, silly joke or riddle for a ${GRADE_LABEL[grade]} child learning to read. Try to use some of these words if it fits naturally: ${words}. Keep the setup and punchline each under 12 words, simple and silly. Respond ONLY with JSON, no markdown fences: {"setup": "...", "punchline": "..."}`;
-    const reply = await askClaude(prompt, 250);
-    const parsed = extractJson(reply);
-    setLoading(false);
-    if (parsed && parsed.setup && parsed.punchline) setJoke(parsed); else setError(true);
   }
-
-  useEffect(() => { fetchJoke(); }, []); // eslint-disable-line
 
   function reveal() {
     setRevealed(true);
@@ -3272,35 +3340,19 @@ function JokesMode({ grade, onExit }) {
     <div className="max-w-md mx-auto pb-10">
       <TopBar title="Joke Time" color={color} onExit={onExit} />
       <div className="px-5 pt-8 text-center">
-        {loading && (
-          <div className="rounded-3xl p-10" style={{ background: "#fff", border: `3px solid ${color}` }}>
-            <div className="text-4xl mb-3">😄</div>
-            <div className="text-sm font-bold" style={{ color: "#8B8499" }}>Thinking of a good one...</div>
-          </div>
-        )}
-        {error && !loading && (
-          <div className="rounded-3xl p-8" style={{ background: "#fff", border: "2px solid #D98551" }}>
-            <div className="text-sm font-bold mb-3" style={{ color: "#D98551" }}>Couldn't reach the tutor — try again.</div>
-            <button onClick={fetchJoke} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: color }}>Try Again</button>
-          </div>
-        )}
-        {joke && !loading && !error && (
-          <>
-            <div className="rounded-3xl p-8 mb-5" style={{ background: "#fff", border: `3px solid ${color}` }}>
-              <button onClick={() => speak(joke.setup)} className="kbtn inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: `${color}22`, color: "#8B6F1D" }}>
-                <Volume2 size={12} /> Hear it
-              </button>
-              <div className="text-xl font-black mb-4" style={{ color: "#2B2250" }}>{joke.setup}</div>
-              {revealed && <div className="text-lg font-bold pt-4" style={{ color: "#6FAE8B", borderTop: "2px dashed #EEE6D6" }}>{joke.punchline} 😆</div>}
-            </div>
-            {!revealed ? (
-              <button onClick={reveal} className="kbtn w-full py-3 rounded-xl font-black text-white mb-3" style={{ background: color }}>Reveal the Answer</button>
-            ) : (
-              <button onClick={fetchJoke} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2 mb-3" style={{ background: color }}>
-                <RefreshCw size={16} /> Another One
-              </button>
-            )}
-          </>
+        <div className="rounded-3xl p-8 mb-5" style={{ background: "#fff", border: `3px solid ${color}` }}>
+          <button onClick={() => speak(joke.setup)} className="kbtn inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: `${color}22`, color: "#8B6F1D" }}>
+            <Volume2 size={12} /> Hear it
+          </button>
+          <div className="text-xl font-black mb-4" style={{ color: "#2B2250" }}>{joke.setup}</div>
+          {revealed && <div className="text-lg font-bold pt-4" style={{ color: "#6FAE8B", borderTop: "2px dashed #EEE6D6" }}>{joke.punchline} 😆</div>}
+        </div>
+        {!revealed ? (
+          <button onClick={reveal} className="kbtn w-full py-3 rounded-xl font-black text-white mb-3" style={{ background: color }}>Reveal the Answer</button>
+        ) : (
+          <button onClick={nextJoke} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2 mb-3" style={{ background: color }}>
+            <RefreshCw size={16} /> Another One
+          </button>
         )}
       </div>
     </div>
