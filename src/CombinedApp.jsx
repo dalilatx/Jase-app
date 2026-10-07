@@ -2617,6 +2617,13 @@ function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride
     hasAutoPlayedRef.current = false;
   }, [story.title]);
 
+  // Leaving this story (Back/Home, or exiting the app) must stop any narration
+  // in progress — otherwise it keeps reading out loud over whatever screen
+  // comes next, since nothing else would ever cancel it.
+  useEffect(() => {
+    return () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); };
+  }, []);
+
   useEffect(() => {
     const el = questionRef.current;
     if (!el) return;
@@ -2673,14 +2680,17 @@ function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride
                 >
                   {group.map(({ tok, idx: myIdx }, i) => {
                     const isSpeaking = myIdx === speakingIdx;
-                    const clean = tok.replace(/[^a-zA-Z']/g, "").toLowerCase();
+                    // Keep hyphens so a compound like "one-room" is spoken as
+                    // two words ("one room"), not fused into "oneroom".
+                    const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+                    const spoken = clean.replace(/-/g, " ");
                     const isSight = sightSet.has(clean);
                     if (!clean || /^\s+$/.test(tok)) return <span key={i}>{tok}</span>;
                     if (!isSight) {
                       return (
                         <span
                           key={i}
-                          onClick={() => speak(clean)}
+                          onClick={() => speak(spoken)}
                           className="cursor-pointer"
                           style={{ borderBottom: "1.5px dotted #C9C2D6", background: isSpeaking ? "#FFE79A" : "transparent", borderRadius: isSpeaking ? 4 : 0, boxShadow: isSpeaking ? "0 0 0 3px #FFE79A" : "none" }}
                         >
@@ -2691,7 +2701,7 @@ function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride
                     return (
                       <span
                         key={i}
-                        onClick={() => speak(clean)}
+                        onClick={() => speak(spoken)}
                         className="font-black cursor-pointer"
                         style={{ background: isSpeaking ? "#FFE79A" : `${color}33`, color: "#2B2250", borderRadius: 4, padding: "1px 3px", boxShadow: isSpeaking ? "0 0 0 3px #FFE79A" : "none" }}
                       >
