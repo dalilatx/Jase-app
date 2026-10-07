@@ -5899,14 +5899,26 @@ async function waExportBackup() {
   return { exportedAt: new Date().toISOString(), data };
 }
 
+function isBackupKey(key) {
+  return WA_BACKUP_KEYS.includes(key) || key.startsWith("upper:");
+}
+
 async function waImportBackup(payload) {
-  if (!payload || !payload.data) return false;
-  for (const key of Object.keys(payload.data)) {
-    try { await window.storage.set(key, payload.data[key]); } catch (e) {}
+  if (!payload || !payload.data || typeof payload.data !== "object") return { ok: false, failedKeys: [] };
+  const keys = Object.keys(payload.data).filter((k) => isBackupKey(k) && typeof payload.data[k] === "string");
+  if (keys.length === 0) return { ok: false, failedKeys: [] };
+  const failedKeys = [];
+  for (const key of keys) {
+    try {
+      const wrote = await window.storage.set(key, payload.data[key]);
+      if (!wrote) failedKeys.push(key);
+    } catch (e) {
+      failedKeys.push(key);
+    }
   }
   // Drop the in-memory analytics copy so it can't overwrite what was just restored.
   resetAnalyticsCache();
-  return true;
+  return { ok: true, failedKeys };
 }
 
 function WABackupPanel({ onClose }) {
@@ -5940,13 +5952,23 @@ function WABackupPanel({ onClose }) {
   async function handleFileChosen(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    const confirmed = window.confirm(
+      "This replaces all current progress, badges, streaks, and settings with what's in this backup file. This can't be undone. Restore anyway?"
+    );
+    if (!confirmed) { e.target.value = ""; return; }
     setBusy(true);
     setMessage(null);
     try {
       const text = await file.text();
       const payload = JSON.parse(text);
-      const ok = await waImportBackup(payload);
-      setMessage(ok ? { type: "ok", text: "Backup restored! Reload the app to see it." } : { type: "err", text: "That file didn't look like a valid backup." });
+      const { ok, failedKeys } = await waImportBackup(payload);
+      if (!ok) {
+        setMessage({ type: "err", text: "That file didn't look like a valid backup." });
+      } else if (failedKeys.length > 0) {
+        setMessage({ type: "err", text: `Restored, but ${failedKeys.length} item(s) failed to save — check your connection and try again.` });
+      } else {
+        setMessage({ type: "ok", text: "Backup restored! Reload the app to see it." });
+      }
     } catch (e) {
       setMessage({ type: "err", text: "Couldn't read that file — make sure it's a backup exported from this app." });
     }
