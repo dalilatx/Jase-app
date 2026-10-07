@@ -8705,17 +8705,24 @@ function makeCloudStorage(childId) {
     },
     async set(key, value) {
       if (unreadable.has(key)) return false;
-      try {
-        const { error } = await supabase
-          .from("app_data")
-          .upsert(
-            { child_id: childId, key, value, updated_at: new Date().toISOString() },
-            { onConflict: "child_id,key" }
-          );
-        return !error;
-      } catch (e) {
-        return false;
+      // A save failure here is invisible to the kid and to most callers (the
+      // UI already shows the new progress optimistically), so a one-off
+      // network blip can silently cost real saved progress. One retry after
+      // a short pause, mirroring get()'s approach, turns most transient
+      // failures into a success instead of a silent loss.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const { error } = await supabase
+            .from("app_data")
+            .upsert(
+              { child_id: childId, key, value, updated_at: new Date().toISOString() },
+              { onConflict: "child_id,key" }
+            );
+          if (!error) return true;
+        } catch (e) {}
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 600));
       }
+      return false;
     },
     async list(prefix) {
       try {
