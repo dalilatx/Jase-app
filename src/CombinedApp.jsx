@@ -7096,8 +7096,18 @@ function LessonVideo({ videoId, parentApproved, onStatus }) {
   }, [videoId, parentApproved]); // eslint-disable-line
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "16 / 9", background: "#000", display: status === "skip" ? "none" : "block" }}>
-      <div ref={hostRef} style={{ width: "100%", height: "100%" }} />
+    <div className="w-full rounded-2xl overflow-hidden relative" style={{ aspectRatio: "16 / 9", background: "#000", display: status === "skip" ? "none" : "block" }}>
+      {/* The host div is where YouTube's own player/iframe gets created, which
+          happens right away — before onReady runs the trusted-channel check.
+          Keeping it hidden (not just covered) until the check has passed
+          means a kid can't tap an unverified video's native play button in
+          the moment before it's approved. */}
+      <div ref={hostRef} style={{ width: "100%", height: "100%", visibility: status === "ready" ? "visible" : "hidden" }} />
+      {status === "loading" && (
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: "#000" }}>
+          <div className="text-xs font-bold" style={{ color: "#8B8499" }}>Loading video…</div>
+        </div>
+      )}
     </div>
   );
 }
