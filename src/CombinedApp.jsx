@@ -3427,8 +3427,8 @@ function TrendChart({ snapshots, field, accent, label }) {
           <div key={i} className="flex-1 rounded-t" style={{ height: `${Math.max(3, (v / max) * 100)}%`, background: accent, opacity: 0.4 + (i / values.length) * 0.6 }} />
         ))}
       </div>
-      <div className="text-xs font-bold" style={{ color: gain > 0 ? "#6FAE8B" : "#8B8499" }}>
-        {gain > 0 ? `+${gain} ${label} over ${rows.length} days` : `${label}: holding steady`}
+      <div className="text-xs font-bold" style={{ color: gain > 0 ? "#6FAE8B" : gain < 0 ? "#D98551" : "#8B8499" }}>
+        {gain > 0 ? `+${gain} ${label} over ${rows.length} days` : gain < 0 ? `${gain} ${label} over ${rows.length} days` : `${label}: holding steady`}
       </div>
     </div>
   );
@@ -7622,7 +7622,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
         </>
       ), () => setPhase("steps"));
     }
-    const allChecked = item.steps.every((_, i) => checked[i]);
+    const allChecked = item.steps.length > 0 && item.steps.every((_, i) => checked[i]);
     return shell(CLASS_SUBJECT_LABEL[item.subject], (
       <>
         <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color }}>{item.skillTitle}</div>
