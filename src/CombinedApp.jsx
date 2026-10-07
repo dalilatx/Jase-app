@@ -8227,12 +8227,23 @@ async function loadRewards() {
   const saved = await readJsonKey(REWARDS_KEY, null);
   return saved ? { ...DEFAULT_REWARDS, ...saved, equipped: { ...DEFAULT_REWARDS.equipped, ...(saved.equipped || {}) } } : { ...DEFAULT_REWARDS };
 }
+// Coins can be awarded from several places (a game finishing, a lesson
+// completing, homework being turned in) within moments of each other. Each
+// award is a read-modify-write over the network with no server-side locking,
+// so two awards racing would otherwise read the same starting balance and
+// the second write would silently clobber the first. Chaining every call
+// through this one promise forces them to run one at a time instead.
+let rewardsMutex = Promise.resolve();
 async function addCoins(amount) {
   if (!amount) return null;
-  const r = await loadRewards();
-  const next = { ...r, coins: r.coins + amount, earned: (r.earned || 0) + amount };
-  await writeJsonKey(REWARDS_KEY, next);
-  return next;
+  const run = rewardsMutex.then(async () => {
+    const r = await loadRewards();
+    const next = { ...r, coins: r.coins + amount, earned: (r.earned || 0) + amount };
+    await writeJsonKey(REWARDS_KEY, next);
+    return next;
+  });
+  rewardsMutex = run.catch(() => {});
+  return run;
 }
 function avatarItem(slot, id) { return AVATAR_ITEMS[slot].find((x) => x.id === id) || AVATAR_ITEMS[slot][0]; }
 
@@ -8252,16 +8263,27 @@ function AvatarBadge({ equipped, size = 56 }) {
 function AvatarShop({ onExit }) {
   const [rewards, setRewards] = useState(null);
   const [slot, setSlot] = useState("character");
+  const busyRef = useRef(false);
   useEffect(() => { loadRewards().then(setRewards); }, []);
   if (!rewards) return <div style={{ background: "#FAF8F4", minHeight: "100vh" }} className="flex items-center justify-center"><div className="font-bold" style={{ color: "#2B2250" }}>Loading...</div></div>;
 
   async function save(next) { setRewards(next); await writeJsonKey(REWARDS_KEY, next); }
-  function choose(item) {
-    const key = `${slot}:${item.id}`;
-    if (rewards.owned.includes(key)) { save({ ...rewards, equipped: { ...rewards.equipped, [slot]: item.id } }); return; }
-    if (rewards.coins < item.cost) return;
-    playChime(true);
-    save({ ...rewards, coins: rewards.coins - item.cost, owned: [...rewards.owned, key], equipped: { ...rewards.equipped, [slot]: item.id } });
+  async function choose(item) {
+    // A fast double-tap on two different items before the first purchase's
+    // write/re-render lands would otherwise read the same pre-purchase
+    // balance twice, so the second tap's write could overwrite the first
+    // purchase instead of building on it.
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      const key = `${slot}:${item.id}`;
+      if (rewards.owned.includes(key)) { await save({ ...rewards, equipped: { ...rewards.equipped, [slot]: item.id } }); return; }
+      if (rewards.coins < item.cost) return;
+      playChime(true);
+      await save({ ...rewards, coins: rewards.coins - item.cost, owned: [...rewards.owned, key], equipped: { ...rewards.equipped, [slot]: item.id } });
+    } finally {
+      busyRef.current = false;
+    }
   }
 
   return (
