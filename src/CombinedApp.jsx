@@ -3094,15 +3094,17 @@ function SentenceBuilderMode({ grade, onExit }) {
 
   function onTileDown(e, item, source) {
     if (status === "correct") return;
+    if (drag) return; // a finger is already dragging a tile; ignore a second touch
     const p = e.touches ? e.touches[0] : e;
     startPosRef.current = { x: p.clientX, y: p.clientY };
     movedRef.current = false;
-    setDrag({ item, source, x: p.clientX, y: p.clientY });
+    setDrag({ item, source, x: p.clientX, y: p.clientY, pointerId: e.pointerId });
   }
 
   useEffect(() => {
     if (!drag) return;
     function move(e) {
+      if (e.pointerId !== drag.pointerId) return;
       e.preventDefault();
       const p = e.touches ? e.touches[0] : e;
       const dx = p.clientX - startPosRef.current.x;
@@ -3111,14 +3113,24 @@ function SentenceBuilderMode({ grade, onExit }) {
       setDrag((d) => (d ? { ...d, x: p.clientX, y: p.clientY } : d));
     }
     function up(e) {
+      if (e.pointerId !== drag.pointerId) return;
       const p = e.changedTouches ? e.changedTouches[0] : e;
       finishDrag(p.clientX, p.clientY);
     }
+    function cancel(e) {
+      if (e.pointerId !== drag.pointerId) return;
+      // The browser aborted this gesture (e.g. a second finger landed, or a
+      // native scroll/zoom took over). Nothing was placed yet, so just drop
+      // the in-progress drag instead of treating it like a drop.
+      setDrag(null);
+    }
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
     };
   }, [drag]); // eslint-disable-line
 
@@ -5311,15 +5323,17 @@ function EquationBuilderMode({ grade, onExit }) {
 
   function onTileDown(e, item, source) {
     if (status === "correct") return;
+    if (drag) return; // a finger is already dragging a tile; ignore a second touch
     const p = e.touches ? e.touches[0] : e;
     startPosRef.current = { x: p.clientX, y: p.clientY };
     movedRef.current = false;
-    setDrag({ item, source, x: p.clientX, y: p.clientY });
+    setDrag({ item, source, x: p.clientX, y: p.clientY, pointerId: e.pointerId });
   }
 
   useEffect(() => {
     if (!drag) return;
     function move(e) {
+      if (e.pointerId !== drag.pointerId) return;
       e.preventDefault();
       const p = e.touches ? e.touches[0] : e;
       const dx = p.clientX - startPosRef.current.x;
@@ -5328,14 +5342,24 @@ function EquationBuilderMode({ grade, onExit }) {
       setDrag((d) => (d ? { ...d, x: p.clientX, y: p.clientY } : d));
     }
     function up(e) {
+      if (e.pointerId !== drag.pointerId) return;
       const p = e.changedTouches ? e.changedTouches[0] : e;
       finishDrag(p.clientX, p.clientY);
     }
+    function cancel(e) {
+      if (e.pointerId !== drag.pointerId) return;
+      // The browser aborted this gesture (e.g. a second finger landed, or a
+      // native scroll/zoom took over). Nothing was placed yet, so just drop
+      // the in-progress drag instead of treating it like a drop.
+      setDrag(null);
+    }
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
     };
   }, [drag]); // eslint-disable-line
 
