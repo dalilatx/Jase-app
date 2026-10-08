@@ -8,6 +8,7 @@ import { supabase } from "./supabaseClient";
 import { PLACEMENT_ITEMS, PLACEMENT_SUBJECTS, PLACEMENT_GRADES, PASS_SCORE, startingGrade, nextGrade, workingLevel, gradeIndex } from "./curriculum/placement";
 import { SKILL_GRADES, SKILL_GRADE_LABEL, skillsFor } from "./curriculum/skillMap";
 import { VIDEO_SEEDS, isTrustedChannel, parseYouTubeId, youTubeSearchUrl } from "./curriculum/videos";
+import { ARCADE_GAMES, ArcadeGame } from "./games/Arcade";
 
 
 // --- Shared sound effects (Web Audio, no external assets, no TTS dependency) ---
@@ -311,19 +312,71 @@ const STORIES = {
       title: "The Big Red Ball",
       question: { prompt: "What color was the ball?", options: ["Red", "Blue", "Yellow"], correct: 0 },
       scene: "ball",
+      category: "Everyday Life",
       text: "I see a big red ball. Is it little? No, it is not little! Can we play? Come here and play with me. We can run. We can jump up. Look, the ball can go up, up, up! Where did it go? I see it! Here it is. You and I can play all day.",
     },
     {
       title: "Three Little Yellow Birds",
       question: { prompt: "What color were the birds?", options: ["Blue", "Yellow", "Green"], correct: 1 },
       scene: "birds",
+      category: "Nature",
       text: "Look up! I see three little birds. They are yellow and blue. One bird can go away. Where did it go? I see it! It is here. Can you find the other two? Come and look with me. We can find them. Here they are! We can play in the sun.",
     },
     {
       title: "My Funny Dog",
       question: { prompt: "What did the dog do?", options: ["Jumped up and down", "Went to sleep", "Ate dinner"], correct: 0 },
       scene: "dog",
+      category: "Everyday Life",
       text: "I have a dog. My dog is funny! He can jump up and down. Down, down, down he goes. Then up, up, up! Look at my dog go. Can you see him? Yes, I see him! Come here, dog. We can play. I like my funny dog.",
+    },
+    {
+      title: "My Blue and Red Paint",
+      question: { prompt: "What two colors did the paint make?", options: ["Purple", "Green", "Orange"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "I have red paint. I have blue paint. Can I mix them? Yes, I can! Look, look! The red and the blue make purple. Purple is new! I can paint a big cat. I can paint a big sun. My paint is fun. Can you paint too? Come and paint with me.",
+    },
+    {
+      title: "Old Bones at the Museum",
+      question: { prompt: "What did they see at the museum?", options: ["Old bones", "A ball", "A dog"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "We go to the museum. Look up! Big old bones! They are so big. A long time ago, a big animal was here. It is not here now. Can we look more? Yes, we can! I see more old bones. I like the museum. We had fun today.",
+    },
+    {
+      title: "The School Band",
+      question: { prompt: "What did the kids play at school?", options: ["Music", "A game", "Lunch"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "We go to school. Today we play music! I bang a drum. Bang, bang, bang! My friend has a bell. Ding, ding, ding! Can you hear us? We play fast. We play slow. It is so much fun. I like our school band. Let's play again!",
+    },
+    {
+      title: "Up, Up to Space",
+      question: { prompt: "Where did the rocket go?", options: ["Up to space", "Into the sea", "Under the ground"], correct: 0 },
+      scene: "space",
+      category: "Space",
+      text: "Look at my rocket! It is red and white. Three, two, one, go! Up, up, up it goes. It can go so high. I see the moon. I see a star. Is it far away? Yes, it is far! My rocket flies and flies. Then it comes back down. I like my rocket.",
+    },
+    {
+      title: "Let's Make Soup",
+      question: { prompt: "What did they put in the pot?", options: ["Carrots", "Rocks", "Toys"], correct: 0 },
+      scene: "kitchen",
+      category: "Cooking",
+      text: "Mom and I make soup today. First, we get a big pot. Then we cut carrots. Can I help? Yes, you can! We put the carrots in. We put water in too. Stir, stir, stir! It smells so good. Is it done? Yes, it is done! We eat the soup. Yum, yum, yum!",
+    },
+    {
+      title: "Field Day Fun",
+      question: { prompt: "What did they do first at Field Day?", options: ["A running race", "A nap", "Homework"], correct: 0 },
+      scene: "fair",
+      category: "Sports",
+      text: "Today is Field Day! We go outside to play. First, we run a race. Ready, set, go! I run so fast. Then we jump. Up, up, up! We play a ball game too. My team wins! We clap and cheer. Field Day is so much fun. I like to run and play.",
+    },
+    {
+      title: "The Big Red Fire Truck",
+      question: { prompt: "What color was the fire truck?", options: ["Red", "Blue", "Green"], correct: 0 },
+      scene: "garage",
+      category: "Community",
+      text: "We see a big red fire truck! It is so big. A firefighter waves to us. Hi, firefighter! Can we look at the truck? Yes, you can! I see a big hose. I see a tall ladder. The firefighter helps keep us safe. Thank you, firefighter! We wave and wave. I like the big red truck.",
     },
   ],
   "1": [
@@ -331,19 +384,71 @@ const STORIES = {
       title: "The Flying Kite",
       question: { prompt: "What did the kite do at the park?", options: ["It flew high", "It broke", "It got wet"], correct: 0 },
       scene: "kite",
+      category: "Everyday Life",
       text: "Every day I fly my kite. It is an old, round kite. My dad has one too. He said, let's fly them together. Then we walk over to the park. We put the kites up high. Once, my kite got stuck. I had to think of how to get it down. I gave a little pull and it came free. Just then, some wind came by. My kite could fly again! Thank you, wind.",
     },
     {
       title: "Grandma's Old Garden",
       question: { prompt: "What did the child help Grandma do?", options: ["Work in the garden", "Bake a cake", "Clean the house"], correct: 0 },
       scene: "garden",
+      category: "Family",
       text: "By the old fence, my grandma has a garden. Every spring, she would ask me to help. Could you give me a hand? I know just what to do. First, I open the gate. Then I take my little shovel. Some flowers need water. Others need me to stop and pull weeds. Over by the fence, an old rose grows tall. My grandma said, thank you for your help. Once we are done, we sit and think about how much fun we had.",
     },
     {
       title: "The Lost Puppy",
       question: { prompt: "Who found the puppy's owner?", options: ["An old man", "A teacher", "A police officer"], correct: 0 },
       scene: "puppy",
+      category: "Everyday Life",
       text: "Once, a little puppy got lost. He did not know his way home. Let me help you, I said. I put him in my arms. We walk from house to house. Has anyone seen this puppy? I would ask. Every person said no. Then, an old man came by. He said, that puppy is mine! Thank you for finding him. I was happy to help. Just then, the puppy licked my face. I think he was thanking me too.",
+    },
+    {
+      title: "The Seed in the Cup",
+      question: { prompt: "What did the seed need to grow?", options: ["Water and sun", "A new cup", "A song"], correct: 0 },
+      scene: "garden",
+      category: "Science",
+      text: "At school, we got a tiny seed. We put it in a cup of dirt. Will it grow? asked my friend. I did not know yet. Every day, I gave it a little water. I set it by the window for the sun. Nothing happened for three whole days. Then one morning, I saw a tiny green sprout. It grew and grew, taller each day. Our teacher said that is how all plants start. I am proud of my little green plant.",
+    },
+    {
+      title: "The Art Show",
+      question: { prompt: "What did the child paint for the show?", options: ["A picture of their family", "A picture of a cat", "A picture of a house"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "Our class is having an art show on Friday. I did not know what to paint at first. My teacher said, paint something you love. So I thought about it all day. That night, I picked my paints and got to work. I painted my mom, my dad, my dog, and me. On Friday, I hung it on the wall with the others. My family came to look at it. They said it was their favorite one there. I felt so proud of my painting.",
+    },
+    {
+      title: "The Trip to the Moon",
+      question: { prompt: "What did the astronaut collect on the moon?", options: ["Moon rocks", "Seashells", "Flowers"], correct: 0 },
+      scene: "space",
+      category: "Space",
+      text: "In my book, an astronaut flies all the way to the moon. Her ship shakes and roars as it blasts off the ground. Once she lands, she puts on a big, puffy suit to go outside. The moon has no air to breathe, so the suit keeps her safe. She bounces more than she walks, since the moon's pull is so light. Carefully, she picks up a few gray moon rocks to bring home. Scientists will study them to learn how the moon was made. I would love to bounce around up there someday too.",
+    },
+    {
+      title: "Grandma's Soup Pot",
+      question: { prompt: "What was special about Grandma's soup pot?", options: ["It had been in the family for years", "It was brand new", "It was very small"], correct: 0 },
+      scene: "kitchen",
+      category: "Cooking",
+      text: "Every Sunday, Grandma pulls out the same old soup pot. It is dented on one side and the handle is a little loose. This pot belonged to my great-grandmother, she told me once. We chop carrots and onions together while the broth warms up. The whole kitchen fills with a smell that means Sunday has begun. Grandma says a good soup needs patience more than anything else. We let it simmer slowly for hours instead of rushing it. When it's finally ready, the whole family gathers around the table. Someday, Grandma says, that old pot will be mine.",
+    },
+    {
+      title: "The Lost Mitten",
+      question: { prompt: "How did the class find the owner of the lost mitten?", options: ["They asked around until someone recognized it", "They threw it away", "They kept it for themselves"], correct: 0 },
+      scene: "hills",
+      category: "Friendship",
+      text: "On the walk back from recess, I found a bright blue mitten in the snow. It did not have a name tag, so I did not know whose it was. I could have just kept it, but that did not feel right. Instead, I showed it to my teacher and we asked around the class. Finally, a quiet new kid named Sam said it might be his. He had been too shy to ask anyone if they had seen it. I was glad I had looked for the owner instead of keeping it. Sam and I ended up walking home together that day.",
+    },
+    {
+      title: "The Class Pet",
+      question: { prompt: "What did the class learn from taking care of the hamster?", options: ["Taking care of something is a shared job", "Hamsters do not need food", "Pets are easy to ignore"], correct: 0 },
+      scene: "science",
+      category: "Animals",
+      text: "Our class got a hamster named Pepper this year, and everyone wanted to help care for him. My teacher made a schedule so each of us got a turn feeding him and cleaning his cage. At first, I thought it would be easy, but there was more to remember than I expected. Pepper needed fresh water every day and his cage cleaned every week. One weekend, it was my turn, and I almost forgot until my mom reminded me. I felt proud knowing Pepper was counting on me to remember. Taking care of a pet, even a tiny one, is a job for the whole class.",
+    },
+    {
+      title: "Field Day Race",
+      question: { prompt: "Why did the boy help his friend during the race?", options: ["His friend had fallen and needed help", "He wanted to win first place", "He was tired of racing"], correct: 0 },
+      scene: "fair",
+      category: "Sports",
+      text: "Field Day was finally here, and I had practiced my running all week. When the race started, I was right near the front of the pack. Halfway through, I heard a friend of mine trip and fall behind me. I could have kept running to try to win, but I stopped to check on him instead. He had scraped his knee, so I helped him up and we finished together. We came in almost last, but it did not feel like losing. My teacher said that was the best kind of Field Day moment. Sometimes finishing together matters more than finishing first.",
     },
   ],
   "2": [
@@ -351,19 +456,71 @@ const STORIES = {
       title: "The Best Day Ever",
       question: { prompt: "Where did the family go?", options: ["The fair", "The beach", "School"], correct: 0 },
       scene: "fair",
+      category: "Everyday Life",
       text: "It was the best day of the year because the fair had come to town. My little sister and I always look forward to it. First, we go on a fast ride. Then we walk around and look at the animals. Both of us want to buy cotton candy, but it costs five dollars. We found some money in our pockets. Which one do you want? asked the man. We could not decide, so we got one to share. Before we left, we watched a green bird sing. It was the best day we had had in a very long time.",
     },
     {
       title: "Grandpa's Garden Tale",
       question: { prompt: "What did Grandpa say the hills used to be covered in?", options: ["Green", "Snow", "Sand"], correct: 0 },
       scene: "hills",
+      category: "Family",
       text: "Grandpa told us these stories many times, but we never got tired of them. Long ago, he would begin, these hills were covered in green. He said the winters were very cold, and it would snow before the sun came up. His family did not have much, so they had to use what they found. They would wash their clothes by the river and read books at night. Right before bed, he would tell us to sleep well and always dream big. His stories made us want to sit and listen for hours.",
     },
     {
       title: "The Missing Kitten",
       question: { prompt: "Where was the kitten found?", options: ["In the bushes", "Under the bed", "In a tree"], correct: 0 },
       scene: "kitten",
+      category: "Everyday Life",
       text: "Our kitten was gone! We did not know where she went. Let's call for her, said Mom. We went around the yard and called her name. Because it was getting cold outside, we knew we had to hurry. Off in the bushes, we heard a tiny sound. It was our kitten! She had been stuck there the whole time. Don't worry, I said, picking her up. You are safe now. We gave her a warm bath to wash off the dirt. That night, she curled up and went right to sleep.",
+    },
+    {
+      title: "Grandpa's Old Toolbox",
+      question: { prompt: "What did Grandpa use the hammer for, long ago?", options: ["Building his family's house", "Fixing a car", "Playing a game"], correct: 0 },
+      scene: "hills",
+      category: "Family",
+      text: "Grandpa opened an old wooden box and we gathered close to see. Inside were tools with worn, smooth handles. This hammer, he said, built the house I grew up in. We asked him how, and he smiled and sat back in his chair. Long ago, he said, there were no big machines to help. His father and uncles worked together for a whole summer. They cut the wood by hand and carried it up the hill. Every board has a story, he told us, if you know how to listen. We held the old hammer and tried to imagine it.",
+    },
+    {
+      title: "The Art Show Ribbon",
+      question: { prompt: "What did the judges like best about her painting?", options: ["The bright colors she chose", "How big it was", "How fast she painted it"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "Every spring, our school holds an art show in the gym. This year, I painted a picture of the lake by our house. I used bright blue, yellow, and green paint to make it glow. My teacher said color can make a painting feel happy or calm. When the judges walked by, they stopped at my painting for a long time. They loved how the colors seemed to shine, one of them said. I won a blue ribbon for my painting. I hung it on my wall so I can see it every day.",
+    },
+    {
+      title: "The Robot Helper",
+      question: { prompt: "What job did the kids give their robot?", options: ["Sorting recycling", "Doing homework", "Driving a car"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "In science club, we built a small robot out of a kit. It had wheels, a little arm, and a sensor that could see color. Our teacher asked us to give it a real job to do. We decided it should help sort recycling into paper and plastic bins. The hardest part was teaching the sensor to tell the colors apart correctly. After three tries, our robot finally sorted ten items in a row without a mistake. Everyone in class cheered when it dropped the last can in the right bin. Robots are not magic — they just need patient teaching, like we do.",
+    },
+    {
+      title: "A Trip to the Library",
+      question: { prompt: "What did the librarian help the kids find?", options: ["Books about space", "A missing dog", "A new game"], correct: 0 },
+      scene: "museum",
+      category: "Community",
+      text: "Our class walked to the public library for a special visit this week. The librarian showed us how the books were organized by subject and number. My friend and I wanted to find books about space and planets. At first we looked in the wrong section and could not find any. The librarian helped us search the catalog on the computer instead. She found three books we never would have found on our own. I did not know librarians knew where almost every book was. Now the library feels less like a maze and more like a helpful friend.",
+    },
+    {
+      title: "The Windy Kite Festival",
+      question: { prompt: "Why did some kites fly better than others at the festival?", options: ["Their shape caught the wind well", "They were painted bright colors", "They were the most expensive"], correct: 0 },
+      scene: "kite",
+      category: "Weather",
+      text: "Our town holds a kite festival every spring when the winds pick up. This year, my dad and I built our own kite instead of buying one. We tried a few different shapes before settling on a diamond design. At the festival, some kites with fancy designs just spun and crashed in the wind. Ours, plain as it was, caught the breeze and climbed high above the field. A judge told us shape matters more than decoration when it comes to flying. We did not win for looks, but ours stayed up the longest of all. Sometimes simple and well-made beats fancy and fragile.",
+    },
+    {
+      title: "The New Kid at School",
+      question: { prompt: "What helped the new student feel welcome?", options: ["Someone invited her to sit with them at lunch", "Everyone ignored her", "The teacher gave her extra homework"], correct: 0 },
+      scene: "school",
+      category: "Friendship",
+      text: "A new girl named Priya joined our class in the middle of the year. She sat alone at lunch on her first day, looking a little nervous. I remembered how scary it felt when my family moved here last year. So I walked over and asked if she wanted to sit with my friends and me. She seemed relieved and told us about her old school on the way. By the end of the week, she was laughing with us at recess like she had always been there. It did not take much — just one small invitation. Now she is one of my best friends at school.",
+    },
+    {
+      title: "Under the Sea",
+      question: { prompt: "What did the class learn about coral at the aquarium?", options: ["Coral is actually a living animal", "Coral is a kind of rock", "Coral cannot be harmed"], correct: 0 },
+      scene: "ocean",
+      category: "Animals",
+      text: "Our class took a field trip to the aquarium to see the coral reef tank. I always thought coral was just colorful rock sitting on the ocean floor. Our guide explained that coral is actually made of tiny living animals called polyps. Each polyp builds a tiny stone home, and together they form the whole reef. Fish, turtles, and crabs all depend on healthy coral reefs for food and shelter. The guide also said warm water and pollution can hurt coral and turn it white. That surprised me, since I always thought of the ocean as too big to harm. Now I understand why everyone kept telling us to protect the reefs.",
     },
   ],
   "3": [
@@ -371,19 +528,71 @@ const STORIES = {
       title: "The Treehouse Plan",
       question: { prompt: "What did they need to finish the treehouse?", options: ["More wood", "More rope", "More paint"], correct: 0 },
       scene: "treehouse",
+      category: "Everyday Life",
       text: "Today we tried to build a treehouse together. We had to carry the boards far across the yard. My brother is much better at hammering than I am, so he did that part. I would hold the wood and keep it straight. We did not laugh when a board fall down, because we were only halfway done. After about seven trips, we grew tired. If we want to finish, we need to bring more wood tomorrow. Never give up, my brother said. So we will try again in the light of morning.",
     },
     {
       title: "The Long Hike",
       question: { prompt: "Why did they stop walking?", options: ["To drink water", "It got dark", "They got lost"], correct: 0 },
       scene: "hills",
+      category: "Nature",
       text: "The trail was long, and the sun was hot. We had to keep going, but I wanted to stop. Only ten more minutes, said Dad. I did not believe him. My legs hurt and my shoes were full of dirt. Finally, we found a small stream and stopped to drink. The cold water was the best thing I had ever tasted. We sat together and looked far out over the valley. It was a kind of quiet you never get at home. Today was hard, but I am glad we did it.",
     },
     {
       title: "Cleaning Out the Garage",
       question: { prompt: "What did they find in the box?", options: ["Old drawings", "Money", "A toy car"], correct: 0 },
       scene: "garage",
+      category: "Everyday Life",
       text: "Mom asked us to clean the garage today. We had to cut open dozens of old boxes. Most were full of things nobody wanted to keep. But then I found a small box with my name on it. Inside were drawings I made when I was six. I had to laugh at how bad they were. Mom said she saved them because they were special to her. We showed them to Dad, and he grinned. Now the garage is clean, and we hung my old drawings on the wall.",
+    },
+    {
+      title: "The Old Train Station",
+      question: { prompt: "What does the town do with the old train station now?", options: ["It is a small museum", "It is torn down", "It is still a station"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "On our field trip, we visited the old train station in town. A hundred years ago, our guide said, trains stopped here every single day. Families would arrive with big trunks and wait on these same benches. Letters, mail, and even ice were shipped through this building. When trains stopped coming, the station almost got torn down. Instead, people in town decided to turn it into a small museum. Now the old ticket counter and schedule board are still here to see. Standing in that room, I tried to imagine the noise of a hundred years ago.",
+    },
+    {
+      title: "Bug Hunt in the Backyard",
+      question: { prompt: "What did they use to study the bugs closely?", options: ["A magnifying glass", "A microscope", "Binoculars"], correct: 0 },
+      scene: "garden",
+      category: "Science",
+      text: "For our science project, we had to study bugs in our own backyard. My partner and I got a jar, a notebook, and a magnifying glass. Under a rock, we found a pill bug that curled into a tiny ball. Near the flowers, a bee moved from petal to petal, collecting pollen. We wrote down what each bug looked like and where we found it. Some bugs have six legs, my partner noticed, and some have more. Our teacher explained that counting legs helps scientists sort living things into groups. By the end, we had found twelve different kinds of bugs.",
+    },
+    {
+      title: "The Robotics Club",
+      question: { prompt: "What problem did the robotics team solve first?", options: ["Why their robot kept driving in circles", "How to paint their robot", "Where to store their robot"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "Our after-school robotics club built a small robot to compete in a maze challenge. The first time we tested it, the robot just drove in a slow, endless circle. We checked the wheels and the battery, but everything looked fine at first. Finally, one teammate noticed we had typed one wire's setting backward in the program. Fixing that single line of code made all the difference once we tried again. The robot drove straight down the hallway on its very first real attempt. Small mistakes, our coach told us, often cause the biggest problems in robotics. We learned that patience matters just as much as building skill.",
+    },
+    {
+      title: "The Mountain Weather Station",
+      question: { prompt: "Why did the scientists build the weather station high on the mountain?", options: ["Weather changes faster and more dramatically at high elevation", "It was the only flat spot available", "Tourists wanted to visit it"], correct: 0 },
+      scene: "hills",
+      category: "Weather",
+      text: "On our field trip, we visited a weather station built partway up a mountain. Our guide explained that weather changes much faster and more wildly at higher elevation. Within one single day, the station can measure sun, wind, and even snow. Scientists use the data to predict storms before they reach the towns below. One instrument spins in the wind to measure speed, while another collects rainfall. The scientist told us the station had once recorded three different kinds of weather in an hour. That seemed incredible until I remembered how quickly clouds moved over the peak we were standing on. High places, it turns out, show you weather that happens too fast to notice down below.",
+    },
+    {
+      title: "The Food Drive",
+      question: { prompt: "What did the class learn from running the food drive?", options: ["Small contributions add up to something big", "Food drives are easy to organize alone", "Only adults can help their community"], correct: 0 },
+      scene: "school",
+      category: "Community",
+      text: "Our class decided to organize a food drive for a local shelter this winter. At first, it felt like a small idea — just a box in the hallway. Each day, a few more cans and boxes of pasta appeared inside it. By the end of two weeks, the box had turned into four overflowing crates. Our teacher helped us deliver everything to the shelter in her own car. The shelter director said our donation would feed several families for almost a month. I realized that no single can seemed like much on its own. But together, all those small contributions added up to something that really mattered.",
+    },
+    {
+      title: "The Class Band Concert",
+      question: { prompt: "What helped the nervous trumpet player get through the concert?", options: ["Remembering to breathe and focus on the music", "Skipping her solo entirely", "Playing as loudly as possible", "Leaving the stage early"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "I had practiced my trumpet solo for weeks before our winter concert. Backstage, my hands were shaking and my mouth suddenly felt dry. My music teacher knelt down and reminded me to just breathe slowly before playing. Focus on the music, not the crowd, she told me quietly. When my turn came, I closed my eyes for a second and pictured only the notes. The solo came out smoother than it ever had in practice at home. Afterward, my parents said they could not even tell I had been nervous. I learned that nerves do not disappear — you just learn to play through them.",
+    },
+    {
+      title: "The Tide Pool Discovery",
+      question: { prompt: "What rule did the class follow when exploring the tide pools?", options: ["Look closely, but put everything back where you found it", "Take home anything interesting", "Only look at the biggest animals", "Avoid touching the water at all"], correct: 0 },
+      scene: "ocean",
+      category: "Nature",
+      text: "At low tide, our class explored the rocky pools left behind by the ocean. Our guide had one important rule: look closely, but put everything back exactly where you found it. In one pool, we found a tiny orange starfish clinging to a rock. In another, a hermit crab scuttled sideways beneath a cluster of mussels. My partner wanted to bring a sea snail home in his pocket, but our guide reminded him it would not survive out of its pool. We carefully set each creature back before moving to the next pool. Our guide said tide pools are only healthy if everyone treats them gently. I left with empty pockets, but with a notebook full of amazing drawings.",
     },
   ],
   "4": [
@@ -391,19 +600,71 @@ const STORIES = {
       title: "The Science Fair Surprise",
       question: { prompt: "Why was her project different?", options: ["She measured the results herself", "It was the biggest", "It cost the most"], correct: 0 },
       scene: "science",
+      category: "Science",
       text: "Maya was probably the most nervous person in the whole gym. Her project was not the largest one there, and it was certainly not the most beautiful. But she had spent a complete month measuring how different amounts of light affected her plants. She had written down every answer she found, even the surprising ones. When the judges came, she explained her rhythm of checking the plants each morning. Although her hands shook, her voice stayed straight and clear. The judges asked question after question. Finally, one of them smiled. Real science, he said, is exactly this.",
     },
     {
       title: "The Mountain Trail",
       question: { prompt: "What made them turn back?", options: ["The weather changed", "They ran out of food", "It got too dark"], correct: 0 },
       scene: "hills",
+      category: "Nature",
       text: "The trail up the mountain was steeper than anyone expected. Our neighbor had climbed it before and said it was important to start early. We had enough water and food for the whole day. About halfway up, the weather began to change. Dark clouds moved across the sky, and the temperature dropped quickly. Although we wanted to reach the top, Dad said we had to decide. Getting caught in a storm on a narrow trail is dangerous. So we turned around. It was disappointing, but usually the right choice is not the easy one.",
     },
     {
       title: "The Island Letter",
       question: { prompt: "Who wrote the letter in the bottle?", options: ["A girl from another island", "A sailor", "Nobody knows"], correct: 0 },
       scene: "ocean",
+      category: "Adventure",
       text: "We found the bottle washed up on the beach after the storm. Inside was a letter, folded into a small square. The handwriting was different from ours, and some words were hard to read. Whoever wrote it lived on an island across the ocean. She described her favorite place to watch the weather roll in, and asked whoever found the letter to write back. We could not believe it. Mom helped us find the island on a map. That afternoon, we wrote a complete answer, sealed it up, and mailed it. Now we are waiting.",
+    },
+    {
+      title: "The One-Room Schoolhouse",
+      question: { prompt: "What was different about school a hundred years ago, in the story?", options: ["One teacher taught every grade in one room", "Students had no books at all", "School only lasted one week"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "Our class visited a one-room schoolhouse that is kept exactly as it was a hundred years ago. The guide explained that a single teacher taught every grade, from six-year-olds to teenagers, in that same small room. Older students often helped the younger ones with their reading and arithmetic. Students walked for miles each day, even in snow, because there was no school bus. We saw the same kind of slate boards students used instead of paper, since paper was expensive. It made me think about how much easier getting to school is for us now. Still, the guide said, students back then were just as curious as we are. Some things about learning, it turns out, never really change.",
+    },
+    {
+      title: "The Community Mural",
+      question: { prompt: "What was the artist's plan for the mural?", options: ["Let neighbors help paint parts of it", "Paint it alone overnight", "Copy a painting from a book"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "A local artist came to paint a mural on the wall of our community center. Instead of painting it alone, she asked neighbors to help fill in sections she had outlined. My job was to paint part of a bright orange sun in the corner. An older man down the street painted a row of houses, since he had lived there his whole life. The artist explained that murals work best when they show what a neighborhood actually loves. By the end of the weekend, dozens of people had added their own brushstrokes. Now, whenever I walk past, I can point to the small patch of sky that is mine. It does not feel like just her mural anymore. It feels like ours.",
+    },
+    {
+      title: "The App Idea",
+      question: { prompt: "Why did the team change their app idea halfway through?", options: ["Testing with real users showed their first idea did not solve a real problem", "They ran out of time to build anything", "Their teacher told them to copy another app"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "For our technology fair, my team planned to build an app that just played sound effects. A week in, our teacher asked us to test it on a few classmates first. Almost everyone said the same thing: it was fun for about thirty seconds, then boring. We realized we had built something nobody actually needed, just something that worked. So we scrapped most of our code and started over with a new idea. Instead, we built a simple app that reminded students when homework was due. When we tested that version, people actually asked to keep using it afterward. Good technology, our teacher said, solves a real problem — it doesn't just show off what you can build.",
+    },
+    {
+      title: "The World Map Project",
+      question: { prompt: "What mistake did the team catch while building their map?", options: ["They had mislabeled two countries' locations", "They used too many colors", "They finished too early"], correct: 0 },
+      scene: "museum",
+      category: "Geography",
+      text: "Our class built a giant floor map of the world out of painted plywood pieces. Each group researched one continent and placed its countries in the correct spot. My group was assigned Africa, which has more countries than any other continent. Partway through, another group pointed out that we had swapped two countries' locations. We had to carefully peel up the pieces and reposition them before the glue dried. Our teacher said even professional mapmakers double-check their work for exactly this reason. By the end, the whole class had built something we could actually walk across. Standing in the middle of our own giant map made the size of the world feel real.",
+    },
+    {
+      title: "The Food Bank Volunteer",
+      question: { prompt: "What surprised the volunteers about sorting donations?", options: ["How much coordination it took to avoid wasting anything", "That nobody needed help organizing", "That donations never expire"], correct: 0 },
+      scene: "school",
+      category: "Community",
+      text: "My family signed up to volunteer at the food bank over winter break this year. I expected the job to be simple: just put cans on a shelf. Instead, a staff member showed us how to check expiration dates and sort by type. Fresh produce had to be given out within days, or it would spoil and go to waste. Canned goods could wait longer, so they went to a different, slower-moving shelf. It took real coordination to make sure nothing good got thrown away by mistake. By the end of the day, we had sorted enough food for dozens of families. I never realized how much planning it takes to make sure help actually reaches people in time.",
+    },
+    {
+      title: "The Talent Show",
+      question: { prompt: "What helped the singer get through her stage fright?", options: ["A friend stood just offstage where she could see him", "She memorized extra verses", "She performed in the dark"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "I signed up to sing at the school talent show, but by the week of the show I regretted it completely. Every time I practiced in front of my family, my voice shook and cracked. My best friend noticed how nervous I was getting as the date got closer. He offered to stand just offstage, where I could see him the whole time I sang. On the night of the show, I stepped out and immediately found his face in the wing. Somehow, having one familiar face nearby made the rest of the crowd disappear a little. My voice still shook on the first note, but it steadied by the second verse. Afterward, I realized you don't have to feel brave alone — you can borrow someone else's courage for a minute.",
+    },
+    {
+      title: "The Coral Reef Report",
+      question: { prompt: "What did the student's report conclude about the reef's health?", options: ["Warmer water was causing it to lose color and life", "The reef had never looked better", "Reefs cannot be harmed by temperature"], correct: 0 },
+      scene: "ocean",
+      category: "Nature",
+      text: "For my research report, I compared photos of the same coral reef taken ten years apart. In the older photos, the coral glowed with bright purples, oranges, and greens. In the recent photos, much of it looked pale, almost bleached white in places. At first I thought the camera settings were just different between the two trips. But my research explained that warmer ocean water causes coral to lose its color and its tiny living algae. Without that algae, the coral starves and can eventually die if conditions don't improve. Scientists are studying which types of coral can survive slightly warmer water better than others. Writing the report made the ocean feel less like a distant, unchangeable place and more like something we're actually responsible for.",
     },
   ],
   "5": [
@@ -411,23 +672,154 @@ const STORIES = {
       title: "The Restaurant Job",
       question: { prompt: "What did he learn from the job?", options: ["How to work with a team", "How to cook", "How to save money"], correct: 0 },
       scene: "restaurant",
+      category: "Everyday Life",
       text: "My older sister got me a job helping at the restaurant where she works. I was definitely nervous on the first day. The kitchen has its own rhythm, and everyone knows their particular role. At the beginning, I was frequently in the way. It would embarrass me when someone had to interrupt their work to move around me. But the head cook was patient. It is necessary, he said, to watch before you act. By the end of the week, I could anticipate what people needed. That, more than anything, was the real success.",
     },
     {
       title: "The Independent Study",
       question: { prompt: "Why did her topic change?", options: ["Her first idea was too broad", "She lost interest", "Her teacher said no"], correct: 0 },
       scene: "science",
+      category: "Science",
       text: "For our independent study, we could choose any topic we wanted. I decided to research how temperature affects the local environment. My teacher immediately recommended that I narrow it down. Your idea is interesting, she said, but it is far too broad to describe well. At first I was frustrated. But when I began reading, I understood. There was so much information that I could not possibly cover all of it. So I chose one particular question about a single stream near my house. It was a much better project because of it.",
     },
     {
       title: "The Argument",
       question: { prompt: "How did they resolve the disagreement?", options: ["They each listened to the other side", "One person gave in", "They stopped talking"], correct: 0 },
       scene: "school",
+      category: "Everyday Life",
       text: "My friend and I had a serious argument about the class project. We had completely opposite ideas about how to begin. I was certain my approach was correct, and she was equally certain about hers. For two days we barely spoke, which was embarrassing for both of us. Finally, our teacher suggested something simple. Each of you, she said, describe the other person's idea back to them. It felt strange, but it worked. I realized her plan solved a problem mine did not. In the end, we combined them, and the project was better than either version.",
+    },
+    {
+      title: "The Time Capsule",
+      question: { prompt: "Why did the class choose a letter to a future student?", options: ["To describe what life is like right now", "Because it was the easiest item", "Because their teacher wrote it for them"], correct: 0 },
+      scene: "museum",
+      category: "History",
+      text: "Our whole class decided to bury a time capsule behind the school, to be opened in fifty years. Everyone argued about what to include, since the box could only hold so much. Someone suggested a phone, but our teacher pointed out that technology changes too quickly to mean much later. In the end, we agreed on a class photo, a newspaper, and a letter describing an ordinary day in our lives. Writing that letter made me notice details I never think about, like how we get our information or what our town sounds like. A hundred small things that feel normal to us might seem strange to someone in fifty years. History, our teacher said, is really just somebody's ordinary day, written down. We sealed the box and buried it on a cold, bright morning.",
+    },
+    {
+      title: "The Portfolio Review",
+      question: { prompt: "What did the teacher say made the student's growth visible?", options: ["Keeping early, rougher pieces alongside newer ones", "Only showing the newest painting", "Copying a famous artist exactly"], correct: 0 },
+      scene: "art",
+      category: "Art",
+      text: "At the end of the year, our art teacher asked us to put together a portfolio of our best work. I almost threw out my pieces from September, since they looked rough compared to my recent ones. My teacher stopped me. Keep those, she said. They show where you started. When I laid everything out in order, I could actually see how my linework had steadied and my colors had grown more confident. A piece I once thought was my best now looked clumsy next to my newest painting. Growth is hard to see day by day, she explained, but it is obvious once you step back. I arranged the portfolio from my very first sketch to my latest piece. For the first time, I felt proud of the whole journey, not just the final painting.",
+    },
+    {
+      title: "The Coding Competition",
+      question: { prompt: "What ultimately won the coding competition for the team?", options: ["A simple solution that worked reliably every time", "The most complicated code in the contest", "The fastest typing speed"], correct: 0 },
+      scene: "science",
+      category: "Technology",
+      text: "Our team spent weeks preparing for the regional coding competition, convinced we needed the most advanced solution possible. During practice, we kept adding clever shortcuts to make our program run faster. The night before the contest, one shortcut caused our whole program to crash without warning. With no time left to rebuild something fancy, we stripped our code back down to its simplest working version. It was not elegant, but it ran the same way every single time we tested it. At the competition, several teams with complicated code crashed under the pressure of the judges' tests. Our plain, reliable program finished every task without a single error. We learned that clever only matters if it still works when it counts.",
+    },
+    {
+      title: "The Model UN",
+      question: { prompt: "What changed the student's mind about her assigned country's position?", options: ["Researching deeply made her understand a view she had dismissed", "A teacher ordered her to agree with it", "She lost a debate and had to concede"], correct: 0 },
+      scene: "museum",
+      category: "Geography",
+      text: "For our school's Model UN event, I was assigned to represent a country whose policies I privately disagreed with. At first, I planned to just read my notes without really believing any of it. But preparing meant researching why that country had made its decisions in the first place. The more I read about its history and its resources, the more its position started to make sense. I still did not fully agree with it, but I understood it in a way I hadn't before. During the debate, I argued my country's case more convincingly than I expected to. Afterward, a judge told me the best delegates are the ones who can argue a view they don't personally hold. I left realizing that understanding a different perspective is not the same as agreeing with it.",
+    },
+    {
+      title: "The Community Garden Project",
+      question: { prompt: "What finally made the neighborhood garden succeed?", options: ["Neighbors agreed on a shared watering schedule", "One person did all the work alone", "They planted only decorative flowers"], correct: 0 },
+      scene: "garden",
+      category: "Community",
+      text: "Our neighborhood tried to start a community garden on an empty lot for two summers in a row. The first summer, everyone planted whatever they wanted, and most of it withered from being forgotten. Nobody had agreed on who was responsible for watering on any given day. This year, a few of us organized a simple shared calendar so someone always had the job. We also agreed to plant things that could feed several families, not just one person's favorites. By midsummer, the lot was green with tomatoes, beans, and squash instead of dry dirt. Neighbors who had barely spoken before started trading vegetables and recipes over the fence. It turned out the garden never needed more plants — it needed a plan everyone actually followed.",
+    },
+    {
+      title: "The Band Audition",
+      question: { prompt: "What did the student realize after a tougher judge critiqued her audition?", options: ["Honest, specific feedback helped her improve faster than praise had", "The judge was simply being unkind", "She should quit the audition process entirely"], correct: 0 },
+      scene: "school",
+      category: "Music",
+      text: "I auditioned for the honors band with a piece I had practiced almost every day for a month. The first judge smiled and said it sounded lovely, which made me feel confident walking out. A second judge later pulled me aside and pointed out three specific places where my timing slipped. At first, her notes stung more than the first judge's compliment had felt good. But her feedback was exact enough that I could actually practice those three measures that same night. A week later, I played the same piece for my teacher, focusing only on those trouble spots. It sounded noticeably better, and I made the honors band on my second attempt. I learned that kind but vague praise feels nice, but specific, honest feedback is what actually makes you better.",
+    },
+    {
+      title: "The Ocean Cleanup Club",
+      question: { prompt: "What did the data from their beach cleanups reveal?", options: ["Most of the trash came from just a few everyday items", "The beach had no trash at all", "Cleanups make no measurable difference"], correct: 0 },
+      scene: "ocean",
+      category: "Nature",
+      text: "Our club organized a beach cleanup every month and carefully logged every item we collected. After six months, we had pages of data instead of just bags of trash. When we finally reviewed the numbers together, one pattern stood out immediately. Plastic bottle caps, straws, and food wrappers made up more than half of everything we found. Big dramatic items, like tires or furniture, were actually rare compared to these small everyday objects. We used our data to write a letter to the city council about plastic straws specifically. A few months later, several beachside restaurants switched to paper straws because of it. It turned out that just counting trash carefully taught us more than any single cleanup day had.",
     },
   ],
 };
 
+// Jokes used to be written by the AI on the spot, which meant Joke Time
+// simply didn't work at all whenever the AI backend wasn't set up or was
+// having a bad day. A kid can't tell the difference between "broken" and
+// "waiting on a grown-up to fix something in Supabase" - it just means no
+// jokes. These are built in, so Joke Time always works, no AI required.
+const JOKES = {
+  K: [
+    { setup: "Why did the cat sit on the computer?", punchline: "To watch the mouse!" },
+    { setup: "What do you call a sleepy dog?", punchline: "A dog-nap!" },
+    { setup: "What do you say to a big red ball?", punchline: "Nothing, it can't hear you!" },
+    { setup: "Why did the bird go to school?", punchline: "To learn to tweet!" },
+    { setup: "What do you call a fish with no eyes?", punchline: "A fsh!" },
+    { setup: "Why is six afraid of seven?", punchline: "Because seven eight nine!" },
+    { setup: "What goes up but never comes down?", punchline: "Your age!" },
+    { setup: "Why did the kitten stop running?", punchline: "It ran out of juice!" },
+  ],
+  "1": [
+    { setup: "Why did the kite go to the doctor?", punchline: "It felt a little under the weather!" },
+    { setup: "What did one wall say to the other wall?", punchline: "I'll meet you at the corner!" },
+    { setup: "Why can't your nose be 12 inches long?", punchline: "Because then it would be a foot!" },
+    { setup: "What has to be broken before you can use it?", punchline: "An egg!" },
+    { setup: "Why did the puppy sit in the shade?", punchline: "It didn't want to be a hot dog!" },
+    { setup: "What kind of garden does a baker have?", punchline: "A flour garden!" },
+    { setup: "Why did the boy bring a ladder to school?", punchline: "He wanted to go to high school!" },
+    { setup: "What did the ocean say to the beach?", punchline: "Nothing, it just waved!" },
+  ],
+  "2": [
+    { setup: "Why did the kid bring a ladder to the fair?", punchline: "He heard the prices were sky high!" },
+    { setup: "What do you call a bear with no teeth?", punchline: "A gummy bear!" },
+    { setup: "Why was the cat afraid of the tree?", punchline: "Because of its bark!" },
+    { setup: "What did the grandpa say about his garden?", punchline: "It's growing on me!" },
+    { setup: "Why did the kitten bring string to the picnic?", punchline: "In case she needed to tie up loose ends!" },
+    { setup: "What do you call a dinosaur that never gives up?", punchline: "A try-ceratops!" },
+    { setup: "Why did the picture go to jail?", punchline: "Because it was framed!" },
+    { setup: "What's a scarecrow's favorite fruit?", punchline: "Straw-berries!" },
+  ],
+  "3": [
+    { setup: "Why did the treehouse builder bring a ladder to the hike?", punchline: "He was taking his work to new heights!" },
+    { setup: "What do you call a group of musical whales?", punchline: "An orca-stra!" },
+    { setup: "Why did the garage mechanic stay calm?", punchline: "He knew how to handle pressure!" },
+    { setup: "What did the science teacher say to the class?", punchline: "Let's get to the root of this problem!" },
+    { setup: "Why don't scientists trust atoms?", punchline: "Because they make up everything!" },
+    { setup: "What do you call a bug hiding in a clock?", punchline: "A ticking insect!" },
+    { setup: "Why did the hiker bring a pencil up the mountain?", punchline: "To draw the curtains when it got dark!" },
+    { setup: "What's the quietest kind of race?", punchline: "A hush hour race!" },
+  ],
+  "4": [
+    { setup: "Why did the science fair project break up with the magnet?", punchline: "It just didn't feel the attraction anymore!" },
+    { setup: "Why did the letter in the bottle apologize?", punchline: "It felt a little washed up!" },
+    { setup: "What do you call a mountain that tells jokes?", punchline: "Hill-arious!" },
+    { setup: "Why did the plant file a police report?", punchline: "It got robbed of its roots!" },
+    { setup: "What did one ocean say to the other?", punchline: "Nothing, they just waved and let it go!" },
+    { setup: "Why was the robot so bad at soccer?", punchline: "It kept kicking up sparks instead of goals!" },
+    { setup: "Why did the storm cloud bring a suitcase?", punchline: "It was planning to make it rain somewhere else!" },
+    { setup: "What's a mountain's favorite kind of candy?", punchline: "Boulder-dash!" },
+  ],
+  "5": [
+    { setup: "Why did the restaurant hire a math teacher?", punchline: "To help split the bill!" },
+    { setup: "Why did the independent study get an award?", punchline: "It really stood on its own!" },
+    { setup: "What did one debate team say to the other?", punchline: "Let's agree to disagree... loudly!" },
+    { setup: "Why did the portfolio artist bring a ladder?", punchline: "To reach new levels of creativity!" },
+    { setup: "Why did the coding team stay up all night?", punchline: "They were debugging their sleep schedule!" },
+    { setup: "What do you call an argument between two clocks?", punchline: "A difference of opinion, but they're never on time about it!" },
+    { setup: "Why did the ocean cleanup club bring a map?", punchline: "To know exactly where to draw the line on pollution!" },
+    { setup: "Why don't skeletons ever argue in school?", punchline: "They don't have the guts!" },
+  ],
+};
+function pickJoke(grade, lastSetup) {
+  const list = JOKES[grade] || JOKES.K;
+  if (list.length === 1) return list[0];
+  let pick = list[Math.floor(Math.random() * list.length)];
+  // Avoid showing the exact same joke twice in a row when hitting "Another One".
+  let guard = 0;
+  while (pick.setup === lastSetup && guard < 10) {
+    pick = list[Math.floor(Math.random() * list.length)];
+    guard++;
+  }
+  return pick;
+}
 
 // ============================================================
 // UPPER GRADES (4th-5th): all four subjects, Albert-style
@@ -1270,7 +1662,7 @@ function ReadingSection({ onSwitchSubject, startGrade }) {
       {screen === "smartPractice" && <SmartPracticeMode grade={grade} pool={missedPool} onMaster={markMastered} onExit={goHome} />}
       {screen === "jokes" && <JokesMode grade={grade} onExit={goHome} />}
 
-      {screen !== "home" && !onBreak && (
+      {screen !== "home" && screen !== "balloons" && !onBreak && (
         <div
           className="fixed top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black"
           style={{ background: "#2B2250", color: "#fff", zIndex: 45 }}
@@ -2143,28 +2535,32 @@ function BalloonPopMode({ grade, onExit }) {
   const COLUMNS = ["#8E7CC3", "#5B9BD1", "#6FAE8B", "#D98551", "#E8B84B"];
   const { takeOne } = useWordQueue(words);
   const [phase, setPhase] = useState("intro");
+  const [roundMode, setRoundMode] = useState("short"); // "short" | "infinite"
   const [timeLeft, setTimeLeft] = useState(ROUND);
   const [score, setScore] = useState(0);
   const [target, setTarget] = useState(words[0]);
   const [balloons, setBalloons] = useState([]);
   const balloonId = useRef(0);
   const targetRef = useRef(words[0]);
+  const poppedIds = useRef(new Set());
 
   useEffect(() => { targetRef.current = target; }, [target]);
 
   useEffect(() => {
     if (phase !== "playing") return;
     speak(target);
-    const timerId = setInterval(() => {
+    // Short Round: the clock runs out and ends the game. Infinite Round has
+    // no clock — play keeps going until the player taps Finish.
+    const timerId = roundMode === "short" ? setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) { setPhase("done"); return 0; }
         return t - 1;
       });
-    }, 1000);
+    }, 1000) : null;
     const spawnId = setInterval(() => {
       spawnBalloon();
     }, calm ? 1700 : 1100);
-    return () => { clearInterval(timerId); clearInterval(spawnId); };
+    return () => { if (timerId) clearInterval(timerId); clearInterval(spawnId); };
   }, [phase]); // eslint-disable-line
 
   function spawnBalloon() {
@@ -2180,10 +2576,12 @@ function BalloonPopMode({ grade, onExit }) {
     }, duration * 1000 + 50);
   }
 
-  function startRound() {
+  function startRound(mode) {
+    setRoundMode(mode);
     setScore(0);
     setTimeLeft(ROUND);
     setBalloons([]);
+    poppedIds.current.clear();
     const t = takeOne();
     setTarget(t);
     setPhase("playing");
@@ -2191,6 +2589,8 @@ function BalloonPopMode({ grade, onExit }) {
 
   function popBalloon(id, word) {
     if (word !== target) return;
+    if (poppedIds.current.has(id)) return; // a fast double-tap already popped this one
+    poppedIds.current.add(id);
     setScore((s) => s + 1);
     setBalloons((b) => b.filter((bal) => bal.id !== id));
     playChime(true);
@@ -2208,7 +2608,14 @@ function BalloonPopMode({ grade, onExit }) {
           <div className="text-5xl mb-4">🎈</div>
           <h2 className="text-xl font-black mb-2" style={{ color: "#2B2250" }}>Ready to pop some words?</h2>
           <p className="text-sm mb-6" style={{ color: "#8B8499" }}>I'll say a word. Pop the balloon with that word before it floats away!</p>
-          <button onClick={startRound} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: "#2B2250" }}>Start Game</button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button onClick={() => startRound("short")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#2B2250" }}>
+              <span>⏱ Short Round</span><span className="text-[10px] font-bold opacity-75">{ROUND} seconds</span>
+            </button>
+            <button onClick={() => startRound("infinite")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#D98551" }}>
+              <span>∞ Infinite</span><span className="text-[10px] font-bold opacity-75">Play till you're done</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -2224,7 +2631,7 @@ function BalloonPopMode({ grade, onExit }) {
           <p className="text-sm mb-6" style={{ color: "#8B8499" }}>Great job finding those words.</p>
           <div className="flex gap-2">
             <button onClick={onExit} className="kbtn flex-1 py-3 rounded-xl font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}><Home size={16} className="inline mr-1.5" /> Home</button>
-            <button onClick={startRound} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#2B2250" }}><RotateCcw size={16} /> Play Again</button>
+            <button onClick={() => startRound(roundMode)} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#2B2250" }}><RotateCcw size={16} /> Play Again</button>
           </div>
         </div>
       </div>
@@ -2236,12 +2643,12 @@ function BalloonPopMode({ grade, onExit }) {
       <style>{`
         @keyframes floatUp { from { bottom: -12%; } to { bottom: 105%; } }
       `}</style>
-      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #EEE6D6", paddingRight: 84 }}>
+      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #EEE6D6" }}>
         <button onClick={onExit} className="kbtn flex items-center gap-1.5 font-bold text-sm px-3 py-2 rounded-full" style={{ color: "#2B2250", background: "#EEE6D6" }}>
           <Home size={16} /> Home
         </button>
         <div className="text-xs font-black" style={{ color: "#2B2250" }}>Score: {score}</div>
-        <div className="text-xs font-black" style={{ color: "#D98551" }}>⏱ {timeLeft}s</div>
+        <div className="text-xs font-black" style={{ color: "#D98551" }}>{roundMode === "short" ? `⏱ ${timeLeft}s` : "∞ Infinite"}</div>
       </div>
 
       <button onClick={() => speak(target)} className="kbtn mx-4 mt-3 rounded-2xl py-3 flex items-center justify-center gap-2 shrink-0" style={{ background: "#2B2250" }}>
@@ -2279,6 +2686,11 @@ function BalloonPopMode({ grade, onExit }) {
           </button>
         ))}
       </div>
+      {roundMode === "infinite" && (
+        <button onClick={() => setPhase("done")} className="kbtn mx-4 mb-3 py-2.5 rounded-xl font-black text-sm shrink-0" style={{ background: "#EEE6D6", color: "#2B2250" }}>
+          Finish
+        </button>
+      )}
     </div>
   );
 }
@@ -2322,7 +2734,10 @@ function StoriesMode({ grade, onExit }) {
               </div>
               <div className="flex-1">
                 <div className="font-black text-base" style={{ color: "#2B2250" }}>{s.title}</div>
-                <div className="text-xs" style={{ color: "#8B8499" }}>{s.text.split(" ").length} words</div>
+                <div className="text-xs flex items-center gap-1.5" style={{ color: "#8B8499" }}>
+                  {s.category && <span className="px-1.5 py-0.5 rounded-full font-bold" style={{ background: `${color}22`, color }}>{s.category}</span>}
+                  <span>{s.text.split(" ").length} words</span>
+                </div>
               </div>
               <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
             </button>
@@ -2448,6 +2863,10 @@ const SCENE_STICKERS = {
   ocean: ["🌊", "🍾", "🏝️"],
   restaurant: ["🍽️", "👨‍🍳", "⏱️"],
   school: ["📚", "✏️", "🤝"],
+  art: ["🎨", "🖌️", "✨"],
+  museum: ["🏛️", "🦴", "📜"],
+  space: ["🚀", "🌙", "⭐"],
+  kitchen: ["🍲", "🥕", "👩‍🍳"],
 };
 
 function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride, extraHeaderContent }) {
@@ -2490,6 +2909,13 @@ function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride
     setSpeakingIdx(-1);
     hasAutoPlayedRef.current = false;
   }, [story.title]);
+
+  // Leaving this story (Back/Home, or exiting the app) must stop any narration
+  // in progress — otherwise it keeps reading out loud over whatever screen
+  // comes next, since nothing else would ever cancel it.
+  useEffect(() => {
+    return () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); };
+  }, []);
 
   useEffect(() => {
     const el = questionRef.current;
@@ -2547,14 +2973,17 @@ function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride
                 >
                   {group.map(({ tok, idx: myIdx }, i) => {
                     const isSpeaking = myIdx === speakingIdx;
-                    const clean = tok.replace(/[^a-zA-Z']/g, "").toLowerCase();
+                    // Keep hyphens so a compound like "one-room" is spoken as
+                    // two words ("one room"), not fused into "oneroom".
+                    const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+                    const spoken = clean.replace(/-/g, " ");
                     const isSight = sightSet.has(clean);
                     if (!clean || /^\s+$/.test(tok)) return <span key={i}>{tok}</span>;
                     if (!isSight) {
                       return (
                         <span
                           key={i}
-                          onClick={() => speak(clean)}
+                          onClick={() => speak(spoken)}
                           className="cursor-pointer"
                           style={{ borderBottom: "1.5px dotted #C9C2D6", background: isSpeaking ? "#FFE79A" : "transparent", borderRadius: isSpeaking ? 4 : 0, boxShadow: isSpeaking ? "0 0 0 3px #FFE79A" : "none" }}
                         >
@@ -2565,7 +2994,7 @@ function StoryReader({ story, grade, color, onBack, onExit, illustrationOverride
                     return (
                       <span
                         key={i}
-                        onClick={() => speak(clean)}
+                        onClick={() => speak(spoken)}
                         className="font-black cursor-pointer"
                         style={{ background: isSpeaking ? "#FFE79A" : `${color}33`, color: "#2B2250", borderRadius: 4, padding: "1px 3px", boxShadow: isSpeaking ? "0 0 0 3px #FFE79A" : "none" }}
                       >
@@ -2823,6 +3252,68 @@ function StoryIllustration({ scene }) {
         <rect x="116" y="92" width="42" height="8" rx="2" fill="#8E7CC3" />
       </svg>
     ),
+    art: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#FBF6EC" />
+        <rect y="118" width="200" height="22" fill="#D6CDBD" />
+        <path d="M80 30 L120 30 L112 110 L88 110 Z" fill="#B5804F" />
+        <rect x="70" y="106" width="60" height="8" rx="2" fill="#8B5F3C" />
+        <rect x="86" y="46" width="28" height="36" rx="2" fill="#fff" stroke="#C9C2D6" strokeWidth="2" />
+        <circle cx="96" cy="58" r="5" fill="#D98551" />
+        <circle cx="106" cy="68" r="5" fill="#5B9BD1" />
+        <circle cx="96" cy="74" r="5" fill="#E8B84B" />
+        <ellipse cx="48" cy="112" rx="16" ry="7" fill="#C9BFAE" />
+        <circle cx="40" cy="112" r="4.5" fill="#D98551" />
+        <circle cx="50" cy="112" r="4.5" fill="#5B9BD1" />
+        <circle cx="58" cy="112" r="4.5" fill="#6FAE8B" />
+      </svg>
+    ),
+    museum: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#EFEAE0" />
+        <rect y="112" width="200" height="28" fill="#D6CDBD" />
+        <rect x="20" y="30" width="160" height="14" fill="#B5804F" />
+        {[36, 70, 104, 138, 168].map((x, i) => (
+          <rect key={i} x={x} y="44" width="8" height="68" fill="#C9BFAE" />
+        ))}
+        <path d="M60 108 Q70 70 86 72 Q98 74 96 94 Q94 108 110 108" stroke="#8B8499" strokeWidth="5" fill="none" strokeLinecap="round" />
+        <rect x="120" y="58" width="40" height="50" rx="2" fill="#fff" stroke="#8E7CC3" strokeWidth="2" />
+        <rect x="128" y="66" width="24" height="18" rx="2" fill="#D98551" opacity="0.7" />
+      </svg>
+    ),
+    space: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#1B1B3A" />
+        <circle cx="30" cy="25" r="2" fill="#fff" opacity="0.8" />
+        <circle cx="60" cy="15" r="1.5" fill="#fff" opacity="0.6" />
+        <circle cx="150" cy="30" r="2" fill="#fff" opacity="0.7" />
+        <circle cx="170" cy="60" r="1.5" fill="#fff" opacity="0.6" />
+        <circle cx="45" cy="70" r="1.5" fill="#fff" opacity="0.5" />
+        <circle cx="130" cy="18" r="14" fill="#E8B84B" opacity="0.85" />
+        <path d="M100 100 L92 118 L100 112 L108 118 Z" fill="#E8B84B" opacity="0.9" />
+        <path d="M86 112 L114 112 L108 80 Q100 68 92 80 Z" fill="#DCE4EE" />
+        <path d="M94 86 L106 86 L102 112 L98 112 Z" fill="#5B9BD1" opacity="0.6" />
+        <circle cx="100" cy="86" r="6" fill="#5B9BD1" />
+        <path d="M90 112 L82 128 L92 118 Z" fill="#D98551" />
+        <path d="M110 112 L118 128 L108 118 Z" fill="#D98551" />
+      </svg>
+    ),
+    kitchen: (
+      <svg viewBox="0 0 200 140" className="w-full h-full">
+        <rect width="200" height="140" fill="#F5EFE6" />
+        <rect y="100" width="200" height="40" fill="#D9C6AE" />
+        <rect x="60" y="60" width="80" height="14" rx="2" fill="#8B8499" />
+        <ellipse cx="100" cy="90" rx="34" ry="12" fill="#3D6E96" />
+        <path d="M66 90 Q66 112 100 112 Q134 112 134 90 Z" fill="#5B9BD1" />
+        <ellipse cx="100" cy="88" rx="30" ry="9" fill="#7FA8C4" opacity="0.7" />
+        <circle cx="76" cy="66" r="4" fill="#D98551" />
+        <circle cx="90" cy="66" r="4" fill="#D98551" />
+        <circle cx="110" cy="66" r="4" fill="#D98551" />
+        <circle cx="124" cy="66" r="4" fill="#D98551" />
+        <rect x="150" y="70" width="22" height="30" rx="2" fill="#E8B84B" opacity="0.8" />
+        <rect x="154" y="64" width="14" height="8" rx="2" fill="#8B5F3C" />
+      </svg>
+    ),
   };
 
   return scenes[scene] || (
@@ -2832,24 +3323,13 @@ function StoryIllustration({ scene }) {
 
 function JokesMode({ grade, onExit }) {
   const color = "#E8B84B";
-  const [joke, setJoke] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [joke, setJoke] = useState(() => pickJoke(grade, null));
   const [revealed, setRevealed] = useState(false);
 
-  async function fetchJoke() {
-    setLoading(true);
-    setError(false);
+  function nextJoke() {
+    setJoke((prev) => pickJoke(grade, prev && prev.setup));
     setRevealed(false);
-    const words = shuffle(WORD_LISTS[grade]).slice(0, 10).join(", ");
-    const prompt = `Write one short, silly joke or riddle for a ${GRADE_LABEL[grade]} child learning to read. Try to use some of these words if it fits naturally: ${words}. Keep the setup and punchline each under 12 words, simple and silly. Respond ONLY with JSON, no markdown fences: {"setup": "...", "punchline": "..."}`;
-    const reply = await askClaude(prompt, 250);
-    const parsed = extractJson(reply);
-    setLoading(false);
-    if (parsed && parsed.setup && parsed.punchline) setJoke(parsed); else setError(true);
   }
-
-  useEffect(() => { fetchJoke(); }, []); // eslint-disable-line
 
   function reveal() {
     setRevealed(true);
@@ -2860,35 +3340,19 @@ function JokesMode({ grade, onExit }) {
     <div className="max-w-md mx-auto pb-10">
       <TopBar title="Joke Time" color={color} onExit={onExit} />
       <div className="px-5 pt-8 text-center">
-        {loading && (
-          <div className="rounded-3xl p-10" style={{ background: "#fff", border: `3px solid ${color}` }}>
-            <div className="text-4xl mb-3">😄</div>
-            <div className="text-sm font-bold" style={{ color: "#8B8499" }}>Thinking of a good one...</div>
-          </div>
-        )}
-        {error && !loading && (
-          <div className="rounded-3xl p-8" style={{ background: "#fff", border: "2px solid #D98551" }}>
-            <div className="text-sm font-bold mb-3" style={{ color: "#D98551" }}>Couldn't reach the tutor — try again.</div>
-            <button onClick={fetchJoke} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: color }}>Try Again</button>
-          </div>
-        )}
-        {joke && !loading && !error && (
-          <>
-            <div className="rounded-3xl p-8 mb-5" style={{ background: "#fff", border: `3px solid ${color}` }}>
-              <button onClick={() => speak(joke.setup)} className="kbtn inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: `${color}22`, color: "#8B6F1D" }}>
-                <Volume2 size={12} /> Hear it
-              </button>
-              <div className="text-xl font-black mb-4" style={{ color: "#2B2250" }}>{joke.setup}</div>
-              {revealed && <div className="text-lg font-bold pt-4" style={{ color: "#6FAE8B", borderTop: "2px dashed #EEE6D6" }}>{joke.punchline} 😆</div>}
-            </div>
-            {!revealed ? (
-              <button onClick={reveal} className="kbtn w-full py-3 rounded-xl font-black text-white mb-3" style={{ background: color }}>Reveal the Answer</button>
-            ) : (
-              <button onClick={fetchJoke} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2 mb-3" style={{ background: color }}>
-                <RefreshCw size={16} /> Another One
-              </button>
-            )}
-          </>
+        <div className="rounded-3xl p-8 mb-5" style={{ background: "#fff", border: `3px solid ${color}` }}>
+          <button onClick={() => speak(joke.setup)} className="kbtn inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: `${color}22`, color: "#8B6F1D" }}>
+            <Volume2 size={12} /> Hear it
+          </button>
+          <div className="text-xl font-black mb-4" style={{ color: "#2B2250" }}>{joke.setup}</div>
+          {revealed && <div className="text-lg font-bold pt-4" style={{ color: "#6FAE8B", borderTop: "2px dashed #EEE6D6" }}>{joke.punchline} 😆</div>}
+        </div>
+        {!revealed ? (
+          <button onClick={reveal} className="kbtn w-full py-3 rounded-xl font-black text-white mb-3" style={{ background: color }}>Reveal the Answer</button>
+        ) : (
+          <button onClick={nextJoke} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2 mb-3" style={{ background: color }}>
+            <RefreshCw size={16} /> Another One
+          </button>
         )}
       </div>
     </div>
@@ -2939,15 +3403,17 @@ function SentenceBuilderMode({ grade, onExit }) {
 
   function onTileDown(e, item, source) {
     if (status === "correct") return;
+    if (drag) return; // a finger is already dragging a tile; ignore a second touch
     const p = e.touches ? e.touches[0] : e;
     startPosRef.current = { x: p.clientX, y: p.clientY };
     movedRef.current = false;
-    setDrag({ item, source, x: p.clientX, y: p.clientY });
+    setDrag({ item, source, x: p.clientX, y: p.clientY, pointerId: e.pointerId });
   }
 
   useEffect(() => {
     if (!drag) return;
     function move(e) {
+      if (e.pointerId !== drag.pointerId) return;
       e.preventDefault();
       const p = e.touches ? e.touches[0] : e;
       const dx = p.clientX - startPosRef.current.x;
@@ -2956,18 +3422,24 @@ function SentenceBuilderMode({ grade, onExit }) {
       setDrag((d) => (d ? { ...d, x: p.clientX, y: p.clientY } : d));
     }
     function up(e) {
+      if (e.pointerId !== drag.pointerId) return;
       const p = e.changedTouches ? e.changedTouches[0] : e;
       finishDrag(p.clientX, p.clientY);
     }
+    function cancel(e) {
+      if (e.pointerId !== drag.pointerId) return;
+      // The browser aborted this gesture (e.g. a second finger landed, or a
+      // native scroll/zoom took over). Nothing was placed yet, so just drop
+      // the in-progress drag instead of treating it like a drop.
+      setDrag(null);
+    }
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", up);
+    window.addEventListener("pointercancel", cancel);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      window.removeEventListener("touchmove", move);
-      window.removeEventListener("touchend", up);
+      window.removeEventListener("pointercancel", cancel);
     };
   }, [drag]); // eslint-disable-line
 
@@ -3039,7 +3511,6 @@ function SentenceBuilderMode({ grade, onExit }) {
               key={w.id}
               ref={(el) => { if (el) tileRefs.current[w.id] = el; }}
               onPointerDown={(e) => onTileDown(e, w, "built")}
-              onTouchStart={(e) => onTileDown(e, w, "built")}
               className="kbtn px-3 py-1.5 rounded-lg font-bold text-sm text-white touch-none"
               style={{ background: color, opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}
             >
@@ -3053,7 +3524,6 @@ function SentenceBuilderMode({ grade, onExit }) {
             <button
               key={w.id}
               onPointerDown={(e) => onTileDown(e, w, "bank")}
-              onTouchStart={(e) => onTileDown(e, w, "bank")}
               className="kbtn px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-1.5 touch-none"
               style={{ background: "#EEE6D6", color: "#2B2250", opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}
             >
@@ -3256,8 +3726,8 @@ function TrendChart({ snapshots, field, accent, label }) {
           <div key={i} className="flex-1 rounded-t" style={{ height: `${Math.max(3, (v / max) * 100)}%`, background: accent, opacity: 0.4 + (i / values.length) * 0.6 }} />
         ))}
       </div>
-      <div className="text-xs font-bold" style={{ color: gain > 0 ? "#6FAE8B" : "#8B8499" }}>
-        {gain > 0 ? `+${gain} ${label} over ${rows.length} days` : `${label}: holding steady`}
+      <div className="text-xs font-bold" style={{ color: gain > 0 ? "#6FAE8B" : gain < 0 ? "#D98551" : "#8B8499" }}>
+        {gain > 0 ? `+${gain} ${label} over ${rows.length} days` : gain < 0 ? `${gain} ${label} over ${rows.length} days` : `${label}: holding steady`}
       </div>
     </div>
   );
@@ -4000,7 +4470,7 @@ function MathSection({ onSwitchSubject, startGrade }) {
       {screen === "report" && <MathProgressReport progress={progress} onExit={goHome} />}
       {screen === "needsPractice" && <MathNeedsPracticeMode pool={missedPool} onMaster={markMastered} onSolved={removeMiss} onExit={goHome} />}
 
-      {screen !== "home" && !onBreak && (
+      {screen !== "home" && screen !== "balloons" && !onBreak && (
         <div className="fixed top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black" style={{ background: "#1B2430", color: "#fff", zIndex: 45 }}>
           <Clock size={12} /> {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")}
         </div>
@@ -4682,12 +5152,14 @@ function BalloonPopMathMode({ grade, onExit }) {
   const COLUMNS = ["#2F4FB2", "#4C6FD1", "#1C2E6B", "#1D7A4C", "#2E9E6B"];
   const queueRef = useRef([]);
   const [phase, setPhase] = useState("intro");
+  const [roundMode, setRoundMode] = useState("short"); // "short" | "infinite"
   const [timeLeft, setTimeLeft] = useState(ROUND);
   const [score, setScore] = useState(0);
   const [fact, setFact] = useState(factList(grade)[0]);
   const [balloons, setBalloons] = useState([]);
   const balloonId = useRef(0);
   const factRef = useRef(fact);
+  const poppedIds = useRef(new Set());
 
   useEffect(() => { factRef.current = fact; }, [fact]);
 
@@ -4699,14 +5171,16 @@ function BalloonPopMathMode({ grade, onExit }) {
   useEffect(() => {
     if (phase !== "playing") return;
     mathSpeak(factSpeech(fact));
-    const timerId = setInterval(() => {
+    // Short Round: the clock runs out and ends the game. Infinite Round has
+    // no clock — play keeps going until the player taps Finish.
+    const timerId = roundMode === "short" ? setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) { setPhase("done"); return 0; }
         return t - 1;
       });
-    }, 1000);
+    }, 1000) : null;
     const spawnId = setInterval(() => { spawnBalloon(); }, calm ? 1800 : 1200);
-    return () => { clearInterval(timerId); clearInterval(spawnId); };
+    return () => { if (timerId) clearInterval(timerId); clearInterval(spawnId); };
   }, [phase]); // eslint-disable-line
 
   function decoyAnswer(correct) {
@@ -4726,10 +5200,12 @@ function BalloonPopMathMode({ grade, onExit }) {
     setTimeout(() => setBalloons((b) => b.filter((bal) => bal.id !== id)), duration * 1000 + 50);
   }
 
-  function startRound() {
+  function startRound(mode) {
+    setRoundMode(mode);
     setScore(0);
     setTimeLeft(ROUND);
     setBalloons([]);
+    poppedIds.current.clear();
     const f = takeOne();
     setFact(f);
     setPhase("playing");
@@ -4737,6 +5213,8 @@ function BalloonPopMathMode({ grade, onExit }) {
 
   function popBalloon(id, value) {
     if (value !== fact.answer) return;
+    if (poppedIds.current.has(id)) return; // a fast double-tap already popped this one
+    poppedIds.current.add(id);
     setScore((s) => s + 1);
     setBalloons((b) => b.filter((bal) => bal.id !== id));
     playChime(true);
@@ -4754,7 +5232,14 @@ function BalloonPopMathMode({ grade, onExit }) {
           <div className="text-5xl mb-4">🎈</div>
           <h2 className="text-xl font-black mb-2" style={{ color: "#1B2430" }}>Ready to pop some answers?</h2>
           <p className="text-sm mb-6" style={{ color: "#5B6B7A" }}>I'll say a problem. Pop the balloon with the right answer before it floats away!</p>
-          <button onClick={startRound} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: "#1B2430" }}>Start Game</button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button onClick={() => startRound("short")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#1B2430" }}>
+              <span>⏱ Short Round</span><span className="text-[10px] font-bold opacity-75">{ROUND} seconds</span>
+            </button>
+            <button onClick={() => startRound("infinite")} className="kbtn py-3 rounded-xl font-black text-white flex flex-col items-center" style={{ background: "#2E9E6B" }}>
+              <span>∞ Infinite</span><span className="text-[10px] font-bold opacity-75">Play till you're done</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -4770,7 +5255,7 @@ function BalloonPopMathMode({ grade, onExit }) {
           <p className="text-sm mb-6" style={{ color: "#5B6B7A" }}>Great job solving those problems.</p>
           <div className="flex gap-2">
             <button onClick={onExit} className="kbtn flex-1 py-3 rounded-xl font-black" style={{ background: "#E7ECFA", color: "#1B2430" }}><Home size={16} className="inline mr-1.5" /> Home</button>
-            <button onClick={startRound} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#1B2430" }}><RotateCcw size={16} /> Play Again</button>
+            <button onClick={() => startRound(roundMode)} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#1B2430" }}><RotateCcw size={16} /> Play Again</button>
           </div>
         </div>
       </div>
@@ -4780,12 +5265,12 @@ function BalloonPopMathMode({ grade, onExit }) {
   return (
     <div className="fixed inset-0 z-40 flex flex-col" style={{ background: "#F5F8FC", height: "100dvh" }}>
       <style>{`@keyframes floatUp { from { bottom: -12%; } to { bottom: 105%; } }`}</style>
-      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #C0392B", paddingRight: 84 }}>
+      <div className="flex items-center justify-between px-4 py-3 shrink-0" style={{ borderBottom: "2px solid #C0392B" }}>
         <button onClick={onExit} className="kbtn flex items-center gap-1.5 font-bold text-sm px-3 py-2 rounded-full" style={{ color: "#1B2430", background: "#E7ECFA" }}>
           <Home size={16} /> Home
         </button>
         <div className="text-xs font-black" style={{ color: "#1B2430" }}>Score: {score}</div>
-        <div className="text-xs font-black" style={{ color: "#D98551" }}>⏱ {timeLeft}s</div>
+        <div className="text-xs font-black" style={{ color: "#D98551" }}>{roundMode === "short" ? `⏱ ${timeLeft}s` : "∞ Infinite"}</div>
       </div>
 
       <button onClick={() => mathSpeak(factSpeech(fact))} className="kbtn mx-4 mt-3 rounded-2xl py-3 flex items-center justify-center gap-2 shrink-0" style={{ background: "#1B2430" }}>
@@ -4818,6 +5303,11 @@ function BalloonPopMathMode({ grade, onExit }) {
           </button>
         ))}
       </div>
+      {roundMode === "infinite" && (
+        <button onClick={() => setPhase("done")} className="kbtn mx-4 mb-3 py-2.5 rounded-xl font-black text-sm shrink-0" style={{ background: "#E7ECFA", color: "#1B2430" }}>
+          Finish
+        </button>
+      )}
     </div>
   );
 }
@@ -5142,15 +5632,17 @@ function EquationBuilderMode({ grade, onExit }) {
 
   function onTileDown(e, item, source) {
     if (status === "correct") return;
+    if (drag) return; // a finger is already dragging a tile; ignore a second touch
     const p = e.touches ? e.touches[0] : e;
     startPosRef.current = { x: p.clientX, y: p.clientY };
     movedRef.current = false;
-    setDrag({ item, source, x: p.clientX, y: p.clientY });
+    setDrag({ item, source, x: p.clientX, y: p.clientY, pointerId: e.pointerId });
   }
 
   useEffect(() => {
     if (!drag) return;
     function move(e) {
+      if (e.pointerId !== drag.pointerId) return;
       e.preventDefault();
       const p = e.touches ? e.touches[0] : e;
       const dx = p.clientX - startPosRef.current.x;
@@ -5159,18 +5651,24 @@ function EquationBuilderMode({ grade, onExit }) {
       setDrag((d) => (d ? { ...d, x: p.clientX, y: p.clientY } : d));
     }
     function up(e) {
+      if (e.pointerId !== drag.pointerId) return;
       const p = e.changedTouches ? e.changedTouches[0] : e;
       finishDrag(p.clientX, p.clientY);
     }
+    function cancel(e) {
+      if (e.pointerId !== drag.pointerId) return;
+      // The browser aborted this gesture (e.g. a second finger landed, or a
+      // native scroll/zoom took over). Nothing was placed yet, so just drop
+      // the in-progress drag instead of treating it like a drop.
+      setDrag(null);
+    }
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", up);
-    window.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("touchend", up);
+    window.addEventListener("pointercancel", cancel);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      window.removeEventListener("touchmove", move);
-      window.removeEventListener("touchend", up);
+      window.removeEventListener("pointercancel", cancel);
     };
   }, [drag]); // eslint-disable-line
 
@@ -5245,7 +5743,7 @@ function EquationBuilderMode({ grade, onExit }) {
           {built.length === 0 && <span className="text-xs" style={{ color: "#E8A69C" }}>Drag the tiles here to build the equation</span>}
           {built.map((w) => (
             <button key={w.id} ref={(el) => { if (el) tileRefs.current[w.id] = el; }}
-              onPointerDown={(e) => onTileDown(e, w, "built")} onTouchStart={(e) => onTileDown(e, w, "built")}
+              onPointerDown={(e) => onTileDown(e, w, "built")}
               className="kbtn px-4 py-2 rounded-lg font-black text-lg text-white touch-none"
               style={{ background: color, opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}>
               {w.text}
@@ -5255,7 +5753,7 @@ function EquationBuilderMode({ grade, onExit }) {
 
         <div className="flex flex-wrap gap-2 justify-center mb-2">
           {bank.map((w) => (
-            <button key={w.id} onPointerDown={(e) => onTileDown(e, w, "bank")} onTouchStart={(e) => onTileDown(e, w, "bank")}
+            <button key={w.id} onPointerDown={(e) => onTileDown(e, w, "bank")}
               className="kbtn px-4 py-2.5 rounded-lg font-black text-lg flex items-center gap-1.5 touch-none"
               style={{ background: "#E7ECFA", color: "#1B2430", opacity: drag && drag.item.id === w.id ? 0.25 : 1, touchAction: "none" }}>
               {w.text}
@@ -5673,7 +6171,7 @@ const WA_BACKUP_KEYS = [
   STORAGE_KEY, MISSED_KEY, ACTIVITY_KEY, LAST_ACTIVITY_KEY, WEEKLY_NOTE_KEY,
   MATH_STORAGE_KEY, MATH_MISSED_KEY, MATH_ACTIVITY_KEY, MATH_LAST_ACTIVITY_KEY,
   STREAK_KEY, SPURTS_KEY, ANALYTICS_KEY, SETTINGS_KEY, PLACEMENT_KEY,
-  "class-progress", "school-day", "video-choices", "homework",
+  "class-progress", "school-day", "video-choices", "homework", "rewards",
 ];
 
 async function waExportBackup() {
@@ -5700,14 +6198,26 @@ async function waExportBackup() {
   return { exportedAt: new Date().toISOString(), data };
 }
 
+function isBackupKey(key) {
+  return WA_BACKUP_KEYS.includes(key) || key.startsWith("upper:");
+}
+
 async function waImportBackup(payload) {
-  if (!payload || !payload.data) return false;
-  for (const key of Object.keys(payload.data)) {
-    try { await window.storage.set(key, payload.data[key]); } catch (e) {}
+  if (!payload || !payload.data || typeof payload.data !== "object") return { ok: false, failedKeys: [] };
+  const keys = Object.keys(payload.data).filter((k) => isBackupKey(k) && typeof payload.data[k] === "string");
+  if (keys.length === 0) return { ok: false, failedKeys: [] };
+  const failedKeys = [];
+  for (const key of keys) {
+    try {
+      const wrote = await window.storage.set(key, payload.data[key]);
+      if (!wrote) failedKeys.push(key);
+    } catch (e) {
+      failedKeys.push(key);
+    }
   }
   // Drop the in-memory analytics copy so it can't overwrite what was just restored.
   resetAnalyticsCache();
-  return true;
+  return { ok: true, failedKeys };
 }
 
 function WABackupPanel({ onClose }) {
@@ -5741,13 +6251,23 @@ function WABackupPanel({ onClose }) {
   async function handleFileChosen(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
+    const confirmed = window.confirm(
+      "This replaces all current progress, badges, streaks, and settings with what's in this backup file. This can't be undone. Restore anyway?"
+    );
+    if (!confirmed) { e.target.value = ""; return; }
     setBusy(true);
     setMessage(null);
     try {
       const text = await file.text();
       const payload = JSON.parse(text);
-      const ok = await waImportBackup(payload);
-      setMessage(ok ? { type: "ok", text: "Backup restored! Reload the app to see it." } : { type: "err", text: "That file didn't look like a valid backup." });
+      const { ok, failedKeys } = await waImportBackup(payload);
+      if (!ok) {
+        setMessage({ type: "err", text: "That file didn't look like a valid backup." });
+      } else if (failedKeys.length > 0) {
+        setMessage({ type: "err", text: `Restored, but ${failedKeys.length} item(s) failed to save — check your connection and try again.` });
+      } else {
+        setMessage({ type: "ok", text: "Backup restored! Reload the app to see it." });
+      }
     } catch (e) {
       setMessage({ type: "err", text: "Couldn't read that file — make sure it's a backup exported from this app." });
     }
@@ -6235,7 +6755,7 @@ function UpperSpeedRound({ subject, grade, cards, onBack, onExit }) {
     return () => clearInterval(id);
   }, [phase]);
 
-  function start() { setScore(0); setTimeLeft(ROUND); setPhase("playing"); nextQuestion(); }
+  function start() { setScore(0); setTimeLeft(ROUND); queueRef.current = []; setPhase("playing"); nextQuestion(); }
 
   function choose(i) {
     if (picked !== null) return;
@@ -6485,14 +7005,14 @@ function UpperMemoryMatch({ subject, grade, cards: sourceCards, onBack, onExit }
   );
 }
 
-function UpperNeedsPracticeMode({ subject, pool, extraCards, onSolved, onExit, onBack }) {
+function UpperNeedsPracticeMode({ subject, grade, pool, extraCards, onSolved, onExit, onBack }) {
   const s = UPPER_SUBJECTS[subject];
   const color = "#8E5A6B";
   // Resolve each missed item back to its full card (with distractors), and
   // draw distractor options from the whole subject so choices stay varied.
   const [state] = useState(() => {
     const items = pool
-      .filter((m) => m.subject === subject)
+      .filter((m) => m.subject === subject && m.grade === grade)
       .map((m) => ({ ...m, card: findUpperCard(m.subject, m.grade, m.topicId, m.q) || (m.q && m.a ? { q: m.q, a: m.a, topicId: m.topicId } : null) }))
       .filter((m) => m.card);
     const distractorPool = [...UPPER_GRADES.flatMap((g) => upperCards(subject, g)), ...(extraCards || [])];
@@ -6616,7 +7136,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
   }
   function removeMiss(topicId, q) {
     setMissedPool((prev) => {
-      const next = prev.filter((m) => !(m.subject === subject && m.topicId === topicId && m.q === q));
+      const next = prev.filter((m) => !(m.subject === subject && m.grade === grade && m.topicId === topicId && m.q === q));
       saveMissedPool(next);
       return next;
     });
@@ -6655,7 +7175,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
 
   const topics = subject ? upperTopicsFor(subject, grade, aiLessons) : [];
   const gradeCards = subject ? cardsFromTopics(topics) : [];
-  const missedCountForSubject = subject ? missedPool.filter((m) => m.subject === subject).length : 0;
+  const missedCountForSubject = subject ? missedPool.filter((m) => m.subject === subject && m.grade === grade).length : 0;
 
   function openSubject(key) { setSubject(key); setView("topics"); }
   function openTopic(t) { setActiveTopic(t); setView("lesson"); }
@@ -6718,7 +7238,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
         <UpperMemoryMatch subject={subject} grade={grade} cards={gradeCards} onBack={goTopics} onExit={goSubjects} />
       )}
       {view === "needsPractice" && subject && (
-        <UpperNeedsPracticeMode subject={subject} pool={missedPool} extraCards={gradeCards} onSolved={removeMiss} onBack={goTopics} onExit={goSubjects} />
+        <UpperNeedsPracticeMode subject={subject} grade={grade} pool={missedPool} extraCards={gradeCards} onSolved={removeMiss} onBack={goTopics} onExit={goSubjects} />
       )}
     </div>
   );
@@ -6897,8 +7417,18 @@ function LessonVideo({ videoId, parentApproved, onStatus }) {
   }, [videoId, parentApproved]); // eslint-disable-line
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden" style={{ aspectRatio: "16 / 9", background: "#000", display: status === "skip" ? "none" : "block" }}>
-      <div ref={hostRef} style={{ width: "100%", height: "100%" }} />
+    <div className="w-full rounded-2xl overflow-hidden relative" style={{ aspectRatio: "16 / 9", background: "#000", display: status === "skip" ? "none" : "block" }}>
+      {/* The host div is where YouTube's own player/iframe gets created, which
+          happens right away — before onReady runs the trusted-channel check.
+          Keeping it hidden (not just covered) until the check has passed
+          means a kid can't tap an unverified video's native play button in
+          the moment before it's approved. */}
+      <div ref={hostRef} style={{ width: "100%", height: "100%", visibility: status === "ready" ? "visible" : "hidden" }} />
+      {status === "loading" && (
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: "#000" }}>
+          <div className="text-xs font-bold" style={{ color: "#8B8499" }}>Loading video…</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -7331,6 +7861,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
 
   async function submit() {
     const sticker = HOMEWORK_STICKERS[Math.floor(Math.random() * HOMEWORK_STICKERS.length)];
+    addCoins(5);
     update(item.id, { status: "done", doneDate: todayStr(), feeling, note: note.trim(), sticker, parentNote: undefined });
     playChime(true);
     setPhase("celebrate");
@@ -7390,7 +7921,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
         </>
       ), () => setPhase("steps"));
     }
-    const allChecked = item.steps.every((_, i) => checked[i]);
+    const allChecked = item.steps.length > 0 && item.steps.every((_, i) => checked[i]);
     return shell(CLASS_SUBJECT_LABEL[item.subject], (
       <>
         <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color }}>{item.skillTitle}</div>
@@ -7531,6 +8062,7 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
   }
 
   async function finishClass(subject, grade, skill, result) {
+    addCoins(10 + (result.mastered ? 5 : 0));
     const attempts = { ...progress.attempts, [skill.id]: [...(progress.attempts[skill.id] || []), { date: todayStr(), score: result.score, total: result.total }].slice(-10) };
     const mastered = result.mastered ? { ...progress.mastered, [skill.id]: { date: todayStr(), score: result.score, total: result.total } } : progress.mastered;
     await saveProgress({ ...progress, attempts, mastered });
@@ -7963,19 +8495,289 @@ function PlacementTest({ onExit, onStartLearning }) {
   );
 }
 
-function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOpenPlacement, onOpenSchoolDay }) {
+// ===================== COINS & AVATAR =====================
+// Coins are earned everywhere (games, School Day classes, homework) and
+// spent in the avatar shop — the reward loop apps like Prodigy and Duolingo use.
+const REWARDS_KEY = "rewards";
+const AVATAR_ITEMS = {
+  character: [
+    { id: "kid", emoji: "🧒", cost: 0 }, { id: "fox", emoji: "🦊", cost: 20 }, { id: "panda", emoji: "🐼", cost: 30 },
+    { id: "robot", emoji: "🤖", cost: 40 }, { id: "astro", emoji: "🧑‍🚀", cost: 50 }, { id: "dino", emoji: "🦖", cost: 60 },
+    { id: "unicorn", emoji: "🦄", cost: 70 }, { id: "dragon", emoji: "🐉", cost: 100 },
+  ],
+  hat: [
+    { id: "none", emoji: "", cost: 0, label: "No hat" }, { id: "cap", emoji: "🧢", cost: 15 }, { id: "helmet", emoji: "⛑️", cost: 20 },
+    { id: "tophat", emoji: "🎩", cost: 25 }, { id: "grad", emoji: "🎓", cost: 40 }, { id: "crown", emoji: "👑", cost: 75 },
+  ],
+  pet: [
+    { id: "none", emoji: "", cost: 0, label: "No pet" }, { id: "dog", emoji: "🐶", cost: 20 }, { id: "cat", emoji: "🐱", cost: 20 },
+    { id: "turtle", emoji: "🐢", cost: 30 }, { id: "parrot", emoji: "🦜", cost: 35 }, { id: "octopus", emoji: "🐙", cost: 45 }, { id: "phoenix", emoji: "🐦‍🔥", cost: 90 },
+  ],
+  bg: [
+    { id: "sunny", color: "#FFE79A", cost: 0, label: "Sunny" }, { id: "ocean", color: "#8FD3F4", cost: 15, label: "Ocean" },
+    { id: "forest", color: "#8BC48A", cost: 15, label: "Forest" }, { id: "candy", color: "#F7A8C8", cost: 25, label: "Candy" },
+    { id: "lava", color: "#F4845F", cost: 30, label: "Lava" }, { id: "galaxy", color: "#4B3F8F", cost: 40, label: "Galaxy" },
+  ],
+};
+const AVATAR_SLOTS = [["character", "Character"], ["hat", "Hats"], ["pet", "Pets"], ["bg", "Backgrounds"]];
+const DEFAULT_REWARDS = { coins: 0, earned: 0, owned: ["character:kid", "hat:none", "pet:none", "bg:sunny"], equipped: { character: "kid", hat: "none", pet: "none", bg: "sunny" } };
+
+async function loadRewards() {
+  const saved = await readJsonKey(REWARDS_KEY, null);
+  return saved ? { ...DEFAULT_REWARDS, ...saved, equipped: { ...DEFAULT_REWARDS.equipped, ...(saved.equipped || {}) } } : { ...DEFAULT_REWARDS };
+}
+// Coins can be awarded from several places (a game finishing, a lesson
+// completing, homework being turned in) within moments of each other. Each
+// award is a read-modify-write over the network with no server-side locking,
+// so two awards racing would otherwise read the same starting balance and
+// the second write would silently clobber the first. Chaining every call
+// through this one promise forces them to run one at a time instead.
+let rewardsMutex = Promise.resolve();
+async function addCoins(amount) {
+  if (!amount) return null;
+  const run = rewardsMutex.then(async () => {
+    const r = await loadRewards();
+    const next = { ...r, coins: r.coins + amount, earned: (r.earned || 0) + amount };
+    await writeJsonKey(REWARDS_KEY, next);
+    return next;
+  });
+  rewardsMutex = run.catch(() => {});
+  return run;
+}
+function avatarItem(slot, id) { return AVATAR_ITEMS[slot].find((x) => x.id === id) || AVATAR_ITEMS[slot][0]; }
+
+function AvatarBadge({ equipped, size = 56 }) {
+  const e = equipped || DEFAULT_REWARDS.equipped;
+  const hat = avatarItem("hat", e.hat).emoji;
+  const pet = avatarItem("pet", e.pet).emoji;
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <div className="w-full h-full rounded-full flex items-center justify-center" style={{ background: avatarItem("bg", e.bg).color, fontSize: size * 0.55 }}>{avatarItem("character", e.character).emoji}</div>
+      {hat && <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -size * 0.28, fontSize: size * 0.4 }}>{hat}</div>}
+      {pet && <div className="absolute" style={{ right: -size * 0.12, bottom: -size * 0.08, fontSize: size * 0.36 }}>{pet}</div>}
+    </div>
+  );
+}
+
+function AvatarShop({ onExit }) {
+  const [rewards, setRewards] = useState(null);
+  const [slot, setSlot] = useState("character");
+  const busyRef = useRef(false);
+  useEffect(() => { loadRewards().then(setRewards); }, []);
+  if (!rewards) return <div style={{ background: "#FAF8F4", minHeight: "100vh" }} className="flex items-center justify-center"><div className="font-bold" style={{ color: "#2B2250" }}>Loading...</div></div>;
+
+  async function save(next) { setRewards(next); await writeJsonKey(REWARDS_KEY, next); }
+  async function choose(item) {
+    // A fast double-tap on two different items before the first purchase's
+    // write/re-render lands would otherwise read the same pre-purchase
+    // balance twice, so the second tap's write could overwrite the first
+    // purchase instead of building on it.
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      const key = `${slot}:${item.id}`;
+      if (rewards.owned.includes(key)) { await save({ ...rewards, equipped: { ...rewards.equipped, [slot]: item.id } }); return; }
+      if (rewards.coins < item.cost) return;
+      playChime(true);
+      await save({ ...rewards, coins: rewards.coins - item.cost, owned: [...rewards.owned, key], equipped: { ...rewards.equipped, [slot]: item.id } });
+    } finally {
+      busyRef.current = false;
+    }
+  }
+
+  return (
+    <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+      <div className="max-w-md mx-auto pb-10">
+        <TopBar title="Avatar Shop" color="#2B2250" onExit={onExit} />
+        <div className="px-5 pt-8">
+          <div className="flex flex-col items-center mb-5">
+            <div className="mb-3 mt-2"><AvatarBadge equipped={rewards.equipped} size={110} /></div>
+            <div className="text-xl font-black" style={{ color: "#8B6F1D" }}>🪙 {rewards.coins} coins</div>
+            <div className="text-xs" style={{ color: "#8B8499" }}>Earn coins in games, classes and homework</div>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 mb-4">
+            {AVATAR_SLOTS.map(([key, label]) => (
+              <button key={key} onClick={() => setSlot(key)} className="kbtn py-2 rounded-xl font-black text-xs" style={{ background: slot === key ? "#2B2250" : "#EEE6D6", color: slot === key ? "#fff" : "#2B2250" }}>{label}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-2.5">
+            {AVATAR_ITEMS[slot].map((item) => {
+              const owned = rewards.owned.includes(`${slot}:${item.id}`);
+              const wearing = rewards.equipped[slot] === item.id;
+              const affordable = rewards.coins >= item.cost;
+              return (
+                <button key={item.id} onClick={() => choose(item)} className="kbtn rounded-2xl p-3 flex flex-col items-center gap-1" data-shop-item={`${slot}:${item.id}`}
+                  style={{ background: wearing ? "#E8B84B22" : "#fff", border: `2px solid ${wearing ? "#E8B84B" : "#EEE6D6"}`, opacity: owned || affordable ? 1 : 0.45 }}>
+                  {slot === "bg"
+                    ? <div className="w-10 h-10 rounded-full" style={{ background: item.color }} />
+                    : <div className="text-3xl h-10 flex items-center">{item.emoji || "✖️"}</div>}
+                  <div className="text-[11px] font-black" style={{ color: "#2B2250" }}>{item.label || ""}</div>
+                  <div className="text-[11px] font-bold" style={{ color: wearing ? "#4F8A6B" : "#8B6F1D" }}>{wearing ? "Wearing" : owned ? "Wear" : `🪙 ${item.cost}`}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================== GAME ARCADE =====================
+// Turns every kind of practice in the app into the arcade's question format
+// ({ q, choices, answer, say? }) so all five games work with all of it.
+function arcadeMathQuestions(grade) {
+  return factList(grade).map((f) => {
+    const decoys = new Set();
+    for (const d of shuffle([1, 2, 3, -1, -2, -3, 10, -10, 4, 5])) {
+      const v = f.answer + d;
+      if (v >= 0 && v !== f.answer) decoys.add(v);
+      if (decoys.size === 3) break;
+    }
+    const choices = shuffle([f.answer, ...decoys]).map(String);
+    return { q: `${factDisplay(f)} = ?`, say: `What is ${factSpeech(f)}?`, choices, answer: choices.indexOf(String(f.answer)) };
+  });
+}
+function arcadeWordQuestions(grade) {
+  const words = WORD_LISTS[grade];
+  return words.map((w) => {
+    const choices = shuffle([w, ...shuffle(words.filter((x) => x !== w)).slice(0, 3)]);
+    return { q: "Tap the word you hear 🔊", say: w, choices, answer: choices.indexOf(w) };
+  });
+}
+function arcadeCardQuestions(cards) {
+  return buildUpperQuestions(cards, cards.length).map((q) => ({ q: q.q, choices: q.options, answer: q.correctIndex }));
+}
+
+// Everything the child can play with right now: built-in sets plus every
+// lesson Ms. Bright has already written for them.
+async function loadArcadeSources() {
+  const sources = [];
+  ["K", "1", "2", "3", "4", "5"].forEach((g) => sources.push({ id: `math-${g}`, group: "Math Facts", label: GRADE_LABEL[g], questions: () => arcadeMathQuestions(g) }));
+  ["K", "1", "2", "3", "4", "5"].forEach((g) => sources.push({ id: `words-${g}`, group: "Sight Words (listening)", label: GRADE_LABEL[g], questions: () => arcadeWordQuestions(g) }));
+  Object.keys(UPPER_SUBJECTS).forEach((s) => UPPER_GRADES.forEach((g) => sources.push({ id: `upper-${s}-${g}`, group: "Upper Grades", label: `${UPPER_SUBJECTS[s].label} · ${UPPER_GRADE_LABEL[g]}`, questions: () => arcadeCardQuestions(upperCards(s, g)) })));
+  try {
+    const listed = await window.storage.list("upper:ai-lessons:");
+    for (const key of (listed && listed.keys) || []) {
+      const [, , subject, grade] = key.split(":");
+      const saved = await readJsonKey(key, {});
+      const cards = Object.entries(saved).flatMap(([topicId, l]) => (l.cards || []).map((c) => ({ ...c, topicId })));
+      if (cards.length >= 5 && UPPER_SUBJECTS[subject]) sources.push({ id: `upperai-${subject}-${grade}`, group: "Upper Grades", label: `${UPPER_SUBJECTS[subject].label} · ${SKILL_GRADE_LABEL[grade]}`, questions: () => arcadeCardQuestions(cards) });
+    }
+  } catch (e) {}
+  try {
+    const listed = await window.storage.list("class-lessons:");
+    for (const key of (listed && listed.keys) || []) {
+      const [, subject, grade] = key.split(":");
+      const saved = await readJsonKey(key, {});
+      const items = Object.values(saved).flatMap((l) => [...(l.weDo || []), ...(l.youDo || [])]).filter((it) => it.choices && it.choices.length >= 2 && it.choices.length <= 4);
+      if (items.length >= 5) sources.push({ id: `class-${subject}-${grade}`, group: "My School Day Lessons", label: `${CLASS_SUBJECT_LABEL[subject] || subject} · ${SKILL_GRADE_LABEL[grade]}`, questions: () => items.map((it) => ({ q: it.q, choices: it.choices, answer: it.answer })) });
+    }
+  } catch (e) {}
+  return sources;
+}
+
+function GameArcade({ onExit, onOpenShop }) {
+  const [sources, setSources] = useState(null);
+  const [sourceId, setSourceId] = useState(null);
+  const [gameId, setGameId] = useState(null);
+  const [questions, setQuestions] = useState(null);
+  const [coins, setCoins] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const [list, rewards, progress] = await Promise.all([loadArcadeSources(), loadRewards(), readJsonKey(CLASS_PROGRESS_KEY, { levels: {} })]);
+      setSources(list);
+      setCoins(rewards.coins);
+      // Start with something at their level: their School Day lessons, or math facts at their math grade.
+      const mathLevel = progress.levels && progress.levels.math;
+      const preferred = list.find((s) => s.group === "My School Day Lessons") || list.find((s) => s.id === `math-${mathLevel}`) || list[0];
+      setSourceId(preferred.id);
+    })();
+  }, []);
+
+  if (!sources) return <div style={{ background: "#FAF8F4", minHeight: "100vh" }} className="flex items-center justify-center"><div className="font-bold" style={{ color: "#2B2250" }}>Loading...</div></div>;
+
+  if (gameId && questions) {
+    return (
+      <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+        <style>{`@keyframes popIn { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } } .pop { animation: popIn 200ms ease-out; } .kbtn { transition: transform 100ms ease; } .kbtn:active { transform: scale(0.95); }`}</style>
+        <ArcadeGame gameId={gameId} questions={questions} speak={(t) => speak(t)} chime={playChime} calm={getCalmMode()}
+          onAnswer={(c) => recordActivity("arcade-activity", c)}
+          onReward={async (earned) => { const r = await addCoins(earned); if (r) setCoins(r.coins); }}
+          onExit={() => { setGameId(null); setQuestions(null); }} />
+      </div>
+    );
+  }
+
+  const source = sources.find((s) => s.id === sourceId);
+  const groups = [...new Set(sources.map((s) => s.group))];
+  function play(id) {
+    const qs = source.questions();
+    if (qs.length < 4) return;
+    setQuestions(qs);
+    setGameId(id);
+  }
+
+  return (
+    <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
+      <div className="max-w-md mx-auto pb-10">
+        <TopBar title="Game Arcade" color="#2B2250" onExit={onExit} />
+        <div className="px-5 pt-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-lg font-black" style={{ color: "#8B6F1D" }}>🪙 {coins}</div>
+            <button onClick={onOpenShop} className="kbtn text-xs font-black px-3 py-2 rounded-full" style={{ background: "#E8B84B22", color: "#8B6F1D", border: "2px solid #E8B84B" }}>🛍️ Avatar Shop</button>
+          </div>
+
+          <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+            <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>What do you want to practice?</div>
+            <select value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="w-full text-sm font-bold py-2.5 px-3 rounded-xl outline-none" style={{ border: "2px solid #EEE6D6", color: "#2B2250", background: "#FAF8F4" }} data-source-picker>
+              {groups.map((g) => (
+                <optgroup key={g} label={g}>
+                  {sources.filter((s) => s.group === g).map((s) => <option key={s.id} value={s.id}>{g === "Math Facts" || g.startsWith("Sight") ? `${g} · ${s.label}` : s.label}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            {!sources.some((s) => s.group === "My School Day Lessons") && (
+              <div className="text-[11px] mt-2" style={{ color: "#8B8499" }}>Finish School Day classes to play games with your own lessons too!</div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {ARCADE_GAMES.map((g) => (
+              <button key={g.id} onClick={() => play(g.id)} className="kbtn w-full rounded-2xl p-4 flex items-center gap-4 text-left" style={{ background: "#fff", border: `2px solid ${g.color}` }}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-3xl" style={{ background: `${g.color}22` }}>{g.emoji}</div>
+                <div className="flex-1">
+                  <div className="font-black text-base" style={{ color: "#2B2250" }}>{g.title}</div>
+                  <div className="text-xs" style={{ color: "#8B8499" }}>{g.blurb}</div>
+                </div>
+                <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOpenPlacement, onOpenSchoolDay, onOpenArcade, onOpenShop }) {
   const [showBackup, setShowBackup] = useState(false);
   const [placement, setPlacement] = useState({});
-  useEffect(() => { loadPlacementResults().then(setPlacement); }, []);
+  const [rewards, setRewards] = useState(null);
+  useEffect(() => { loadPlacementResults().then(setPlacement); loadRewards().then(setRewards); }, []);
   return (
     <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
       <div className="max-w-md mx-auto px-5 pt-10 pb-10">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style={{ background: "#2B2250" }}>
-            <Sparkles color="#fff" size={30} />
-          </div>
+          <button onClick={onOpenShop} className="kbtn inline-flex mb-4 mt-3" aria-label="Avatar shop">
+            <AvatarBadge equipped={rewards && rewards.equipped} size={64} />
+          </button>
           <h1 className="text-3xl font-black" style={{ color: "#2B2250" }}>{childName || "Jase"}'s Learning World</h1>
           <p className="text-sm mt-1.5" style={{ color: "#8B8499" }}>What should we work on today?</p>
+          <button onClick={onOpenShop} className="kbtn inline-flex items-center gap-1.5 mt-3 text-xs font-black px-3 py-1.5 rounded-full" style={{ background: "#E8B84B22", color: "#8B6F1D", border: "2px solid #E8B84B" }}>
+            🪙 {rewards ? rewards.coins : 0} coins · 🛍️ Avatar Shop
+          </button>
         </div>
 
         <button onClick={onOpenSchoolDay} className="kbtn w-full rounded-2xl p-5 mb-3 flex items-center gap-4 text-left" style={{ background: "#2B2250" }}>
@@ -7985,6 +8787,15 @@ function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOp
             <div className="text-xs" style={{ color: "#C9C2D6" }}>Reading, Math, Science & Social Studies with Ms. Bright</div>
           </div>
           <ArrowRight size={20} color="#fff" />
+        </button>
+
+        <button onClick={onOpenArcade} className="kbtn w-full rounded-2xl p-5 mb-3 flex items-center gap-4 text-left" style={{ background: "#fff", border: "2px solid #E8B84B" }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-2xl" style={{ background: "#E8B84B22" }}>🎮</div>
+          <div className="flex-1">
+            <div className="font-black text-lg" style={{ color: "#2B2250" }}>Game Arcade</div>
+            <div className="text-xs" style={{ color: "#8B8499" }}>Tower Defense, Maze Chase, Racing & more — with any subject</div>
+          </div>
+          <ArrowRight size={20} style={{ color: "#C9C2D6" }} />
         </button>
 
         <div className="space-y-3 mb-6">
@@ -8056,7 +8867,8 @@ function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOp
 
 function CombinedApp({ childName }) {
   const [subject, setSubject] = useState(null); // null | "reading" | "math" | "upper"
-  const [globalView, setGlobalView] = useState(null); // null | "report" | "settings" | "placement" | "school"
+  const [globalView, setGlobalView] = useState(null); // null | "report" | "settings" | "placement" | "school" | "arcade" | "shop"
+  const [shopReturn, setShopReturn] = useState(null); // where the shop's Home button goes
   const [startAt, setStartAt] = useState(null); // { subject, grade } chosen from placement results
   const [settings, setSettings] = useState({ fontScale: "normal", dyslexiaSpacing: false, calmMode: false });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -8111,6 +8923,12 @@ function CombinedApp({ childName }) {
       {globalView === "report" && (
         <CombinedProgressReport onExit={() => setGlobalView(null)} />
       )}
+      {globalView === "arcade" && (
+        <GameArcade onExit={() => setGlobalView(null)} onOpenShop={() => { setShopReturn("arcade"); setGlobalView("shop"); }} />
+      )}
+      {globalView === "shop" && (
+        <AvatarShop onExit={() => { setGlobalView(shopReturn); setShopReturn(null); }} />
+      )}
       {globalView === "school" && (
         <SchoolDay childName={childName} onExit={() => setGlobalView(null)} onOpenPlacement={() => setGlobalView("placement")} />
       )}
@@ -8125,6 +8943,8 @@ function CombinedApp({ childName }) {
           onOpenSettings={() => setGlobalView("settings")}
           onOpenPlacement={() => setGlobalView("placement")}
           onOpenSchoolDay={() => setGlobalView("school")}
+          onOpenArcade={() => setGlobalView("arcade")}
+          onOpenShop={() => { setShopReturn(null); setGlobalView("shop"); }}
         />
       )}
       {globalView === null && subject === "reading" && (
@@ -8184,17 +9004,24 @@ function makeCloudStorage(childId) {
     },
     async set(key, value) {
       if (unreadable.has(key)) return false;
-      try {
-        const { error } = await supabase
-          .from("app_data")
-          .upsert(
-            { child_id: childId, key, value, updated_at: new Date().toISOString() },
-            { onConflict: "child_id,key" }
-          );
-        return !error;
-      } catch (e) {
-        return false;
+      // A save failure here is invisible to the kid and to most callers (the
+      // UI already shows the new progress optimistically), so a one-off
+      // network blip can silently cost real saved progress. One retry after
+      // a short pause, mirroring get()'s approach, turns most transient
+      // failures into a success instead of a silent loss.
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const { error } = await supabase
+            .from("app_data")
+            .upsert(
+              { child_id: childId, key, value, updated_at: new Date().toISOString() },
+              { onConflict: "child_id,key" }
+            );
+          if (!error) return true;
+        } catch (e) {}
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 600));
       }
+      return false;
     },
     async list(prefix) {
       try {
