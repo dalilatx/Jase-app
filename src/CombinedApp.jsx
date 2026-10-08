@@ -1652,7 +1652,7 @@ function ReadingSection({ onSwitchSubject, startGrade }) {
       {screen === "learn" && (
         <LearnMode grade={grade} onExit={goHome} onMaster={markMastered} onMiss={addMiss} idx={learnIndex[grade]} setIdx={(i) => setLearnIndex((prev) => ({ ...prev, [grade]: i }))} />
       )}
-      {screen === "test" && <TestMode grade={grade} onExit={goHome} onFinish={(r) => recordTest(grade, r)} />}
+      {screen === "test" && <TestMode grade={grade} onExit={goHome} onFinish={(r) => recordTest(grade, r)} onReviewMissed={() => setScreen("needsPractice")} />}
       {screen === "memory" && <MemoryMatchMode grade={grade} onExit={goHome} />}
       {screen === "balloons" && <BalloonPopMode grade={grade} onExit={goHome} />}
       {screen === "stories" && <StoriesMode grade={grade} onExit={goHome} />}
@@ -2286,7 +2286,73 @@ function NeedsPracticeMode({ pool, onMaster, onSolved, onExit }) {
   );
 }
 
-function TestMode({ grade, onExit, onFinish }) {
+// Diagnoses the likely reason a spelling attempt was wrong, without any AI
+// call — just comparing the letters typed against the correct spelling.
+// This is what makes the test results screen actually useful instead of a
+// flat right/wrong list: a specific, common cause of trouble (reversed
+// letters, a missed vowel, a dropped letter...) is something a kid and
+// parent can actually practice, where "wrong" alone is not.
+const SPELLING_REVERSIBLE_PAIRS = [["b", "d"], ["p", "q"], ["n", "u"], ["m", "w"]];
+const SPELLING_VOWELS = new Set(["a", "e", "i", "o", "u"]);
+const SPELLING_CATEGORY_LABELS = {
+  blank: "Didn't attempt",
+  reversed_whole: "Reversed the whole word",
+  vowel: "Mixed up a vowel sound",
+  similar_letters: "Mixed up similar-looking letters",
+  single_letter: "One letter off",
+  transposition: "Swapped two letters around",
+  missing_letter: "Left out a letter",
+  extra_letter: "Added an extra letter",
+  other: "Spelled it differently",
+};
+function diagnoseSpellingMiss(typedRaw, correctRaw) {
+  const typed = (typedRaw || "").trim().toLowerCase();
+  const correct = correctRaw.toLowerCase();
+  if (!typed) return { category: "blank", text: "Didn't attempt — let's just practice hearing and saying it." };
+  if (typed === correct) return null;
+
+  if (typed.length > 1 && typed.split("").reverse().join("") === correct) {
+    return { category: "reversed_whole", text: "Wrote the letters in reverse order." };
+  }
+
+  const n = typed.length, m = correct.length;
+  if (n === m) {
+    const diffs = [];
+    for (let i = 0; i < n; i++) if (typed[i] !== correct[i]) diffs.push(i);
+    if (diffs.length === 1) {
+      const i = diffs[0];
+      const a = typed[i], b = correct[i];
+      if (SPELLING_VOWELS.has(a) && SPELLING_VOWELS.has(b)) {
+        return { category: "vowel", text: `Mixed up the vowel sound — wrote "${a}" instead of "${b}".` };
+      }
+      if (SPELLING_REVERSIBLE_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x))) {
+        return { category: "similar_letters", text: `Mixed up similar-looking letters — "${a}" and "${b}".` };
+      }
+      return { category: "single_letter", text: `One letter was off — wrote "${a}" instead of "${b}".` };
+    }
+    if (diffs.length === 2 && diffs[1] === diffs[0] + 1) {
+      const i = diffs[0];
+      if (typed[i] === correct[i + 1] && typed[i + 1] === correct[i]) {
+        return { category: "transposition", text: `Swapped two letters around — "${typed[i]}${typed[i + 1]}" instead of "${correct[i]}${correct[i + 1]}".` };
+      }
+    }
+  } else if (n === m - 1) {
+    for (let i = 0; i <= m; i++) {
+      if (correct.slice(0, i) + correct.slice(i + 1) === typed) {
+        return { category: "missing_letter", text: `Left out the letter "${correct[i]}".` };
+      }
+    }
+  } else if (n === m + 1) {
+    for (let i = 0; i < n; i++) {
+      if (typed.slice(0, i) + typed.slice(i + 1) === correct) {
+        return { category: "extra_letter", text: `Added an extra letter — "${typed[i]}".` };
+      }
+    }
+  }
+  return { category: "other", text: "Spelled it differently — let's sound it out together." };
+}
+
+function TestMode({ grade, onExit, onFinish, onReviewMissed }) {
   const [order] = useState(() => shuffle(WORD_LISTS[grade]));
   const [idx, setIdx] = useState(0);
   const [typed, setTyped] = useState("");
@@ -2335,6 +2401,12 @@ function TestMode({ grade, onExit, onFinish }) {
 
   if (done) {
     const score = answers.filter((a) => a.correct).length;
+    const missedDiag = answers
+      .filter((a) => !a.correct)
+      .map((a) => ({ ...a, diag: diagnoseSpellingMiss(a.typed, a.word) }));
+    const tally = {};
+    missedDiag.forEach(({ diag }) => { tally[diag.category] = (tally[diag.category] || 0) + 1; });
+    const tallyRows = Object.entries(tally).sort((a, b) => b[1] - a[1]);
     return (
       <div className="max-w-md mx-auto pb-10">
         <TopBar title="Test Complete" color={color} onExit={onExit} />
@@ -2343,32 +2415,57 @@ function TestMode({ grade, onExit, onFinish }) {
           <h2 className="text-2xl font-black mb-1" style={{ color: "#2B2250" }}>{score} / {answers.length} correct</h2>
           <p className="text-sm mb-6" style={{ color: "#8B8499" }}>{score === answers.length ? "Perfect score! Amazing work." : "Great effort — let's review the graded list below."}</p>
 
+          {tallyRows.length > 0 && (
+            <div className="text-left rounded-2xl p-4 mb-4" style={{ background: `${color}11`, border: `2px solid ${color}` }}>
+              <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>What to work on</div>
+              {tallyRows.map(([cat, count]) => (
+                <div key={cat} className="flex items-center justify-between text-sm py-1" style={{ color: "#2B2250" }}>
+                  <span>{SPELLING_CATEGORY_LABELS[cat] || cat}</span>
+                  <span className="font-black">{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="text-left rounded-2xl p-4 mb-6" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
             <div className="font-black text-sm mb-3" style={{ color: "#2B2250" }}>Graded List</div>
-            {answers.map((a, i) => (
-              <div key={i} className="flex items-center gap-2 py-2 text-sm" style={{ borderBottom: i < answers.length - 1 ? "1px solid #EEE6D6" : "none" }}>
-                <span className="font-bold w-6 shrink-0" style={{ color: "#8B8499" }}>{i + 1}.</span>
-                {a.correct ? (
-                  <span className="font-bold flex items-center gap-1.5" style={{ color: "#6FAE8B" }}>
-                    <CheckCircle2 size={14} /> {a.word}
-                  </span>
-                ) : (
-                  <span className="flex-1 flex items-center flex-wrap gap-x-2">
-                    <span className="font-bold flex items-center gap-1.5" style={{ color: "#D9432F" }}>
-                      <XCircle size={14} /> {a.typed || "(blank)"}
-                    </span>
-                    <span style={{ color: "#8B8499" }}>→</span>
-                    <span className="font-black" style={{ color: "#2B2250" }}>{a.word}</span>
-                  </span>
-                )}
-              </div>
-            ))}
+            {answers.map((a, i) => {
+              const diag = a.correct ? null : diagnoseSpellingMiss(a.typed, a.word);
+              return (
+                <div key={i} className="py-2" style={{ borderBottom: i < answers.length - 1 ? "1px solid #EEE6D6" : "none" }}>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-bold w-6 shrink-0" style={{ color: "#8B8499" }}>{i + 1}.</span>
+                    {a.correct ? (
+                      <span className="font-bold flex items-center gap-1.5" style={{ color: "#6FAE8B" }}>
+                        <CheckCircle2 size={14} /> {a.word}
+                      </span>
+                    ) : (
+                      <span className="flex-1 flex items-center flex-wrap gap-x-2">
+                        <span className="font-bold flex items-center gap-1.5" style={{ color: "#D9432F" }}>
+                          <XCircle size={14} /> {a.typed || "(blank)"}
+                        </span>
+                        <span style={{ color: "#8B8499" }}>→</span>
+                        <span className="font-black" style={{ color: "#2B2250" }}>{a.word}</span>
+                      </span>
+                    )}
+                  </div>
+                  {!a.correct && diag && (
+                    <div className="text-xs mt-1 ml-8" style={{ color: "#8B8499" }}>{diag.text}</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2.5">
             <button onClick={onExit} className="kbtn flex-1 py-3 rounded-xl font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}><Home size={16} className="inline mr-1.5" /> Home</button>
             <button onClick={() => { setIdx(0); setAnswers([]); setDone(false); setStarted(true); }} className="kbtn flex-1 py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: color }}><RotateCcw size={16} /> Retake</button>
           </div>
+          {missedDiag.length > 0 && onReviewMissed && (
+            <button onClick={onReviewMissed} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-1.5" style={{ background: "#8E5A6B" }}>
+              Practice These Words Now <ArrowRight size={16} />
+            </button>
+          )}
         </div>
       </div>
     );
