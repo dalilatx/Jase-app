@@ -3492,8 +3492,6 @@ function SentenceBuilderMode({ grade, onExit }) {
   );
 }
 
-const WEEKLY_NOTE_KEY = "reading-app-weekly-note";
-
 const READING_MODE_LABELS = {
   learn: "Learn Words", test: "Spelling Test", memory: "Memory Match", balloons: "Balloon Pop",
   stories: "Story Time", sentences: "Sentence Builder", needsPractice: "Needs Practice",
@@ -3692,14 +3690,61 @@ ${sections}
   return true;
 }
 
+// Both of these used to ask the AI to write a summary; now they're computed
+// directly from the child's own saved data, so they're instant, always
+// accurate, and don't depend on any AI setup working.
+function buildWeeklyNote(progress, missedPool, streakData) {
+  const perGrade = Object.entries(progress).filter(([, p]) => p.mastered && p.mastered.length > 0);
+  const totalMastered = perGrade.reduce((s, [, p]) => s + p.mastered.length, 0);
+  if (totalMastered === 0 && (!streakData || !streakData.currentStreak)) {
+    return "Once he's practiced a bit, this will summarize how things are going — straight from his own saved progress, no AI needed.";
+  }
+  const parts = [];
+  if (totalMastered > 0) {
+    const gradeList = perGrade.map(([g]) => GRADE_LABEL[g]).join(", ");
+    parts.push(`He's mastered ${totalMastered} sight word${totalMastered === 1 ? "" : "s"} so far across ${gradeList}.`);
+  }
+  const withTests = perGrade.filter(([, p]) => p.lastTest);
+  if (withTests.length > 0) {
+    const [g, p] = withTests[withTests.length - 1];
+    parts.push(`His most recent spelling test (${GRADE_LABEL[g]}) was ${p.lastTest.score}/${p.lastTest.total}.`);
+  }
+  const missedWords = (missedPool || []).map((m) => m.word);
+  if (missedWords.length > 0) {
+    const allWords = [...new Set(missedPool.map((m) => m.grade))].flatMap((g) => WORD_LISTS[g] || []);
+    const found = findSharedSpellingPattern(missedWords, allWords);
+    if (found && found.words.length >= 2) {
+      parts.push(`What still needs work: several recent misses share the letters "${found.pattern}" — Smart Practice can target that directly.`);
+    } else {
+      parts.push(`What still needs work: ${missedWords.length} word${missedWords.length === 1 ? "" : "s"} recently missed, without one clear shared pattern yet — mixed review in Needs Practice should help.`);
+    }
+  } else {
+    parts.push("No words currently need review — nice and caught up.");
+  }
+  if (streakData && streakData.currentStreak > 0) {
+    parts.push(`He's on a ${streakData.currentStreak}-day practice streak.`);
+  }
+  return parts.join(" ");
+}
+function buildPatternReport(missedPool) {
+  if (!missedPool || missedPool.length === 0) {
+    return "Not enough data yet — once he's missed some words across a few sessions, this will look for real patterns worth mentioning to a teacher.";
+  }
+  const allWords = [...new Set(missedPool.map((m) => m.grade))].flatMap((g) => WORD_LISTS[g] || []);
+  const missedWords = missedPool.map((m) => m.word);
+  const uniqueMissed = [...new Set(missedWords)];
+  const found = findSharedSpellingPattern(missedWords, allWords);
+  if (found && found.words.length >= 2) {
+    const sharing = uniqueMissed.filter((w) => w.toLowerCase().includes(found.pattern));
+    return `Of ${uniqueMissed.length} word${uniqueMissed.length === 1 ? "" : "s"} missed recently, ${sharing.length} share the letters "${found.pattern}" (for example: ${sharing.slice(0, 4).join(", ")}). That's the clearest pattern in his recent mistakes, so it may be worth some focused practice there. No other single pattern stood out beyond this.`;
+  }
+  return `${uniqueMissed.length} word${uniqueMissed.length === 1 ? "" : "s"} missed recently (for example: ${uniqueMissed.slice(0, 5).join(", ")}), without one clear shared spelling pattern across them. That likely just reflects normal mixed practice rather than one specific trouble spot.`;
+}
+
 function ProgressReport({ progress, onExit }) {
   const [streakData, setStreakData] = useState(null);
   const [activityLog, setActivityLog] = useState([]);
   const [missedPool, setMissedPoolLocal] = useState([]);
-  const [weeklyNote, setWeeklyNote] = useState(null);
-  const [weeklyLoading, setWeeklyLoading] = useState(false);
-  const [patternReport, setPatternReport] = useState(null);
-  const [patternLoading, setPatternLoading] = useState(false);
   const [analytics, setAnalytics] = useState(emptyAnalytics());
 
   useEffect(() => {
@@ -3722,12 +3767,6 @@ function ProgressReport({ progress, onExit }) {
       } catch (e) {}
     })();
     (async () => {
-      try {
-        const res = await window.storage.get(WEEKLY_NOTE_KEY);
-        if (res && res.value) setWeeklyNote(JSON.parse(res.value));
-      } catch (e) {}
-    })();
-    (async () => {
       const readingMastered = Object.values(progress).reduce((s, p) => s + (p.mastered ? p.mastered.length : 0), 0);
       let mathMastered = 0;
       try {
@@ -3743,36 +3782,10 @@ function ProgressReport({ progress, onExit }) {
     })();
   }, []); // eslint-disable-line
 
-  async function generateWeeklyNote() {
-    setWeeklyLoading(true);
-    const summary = Object.entries(progress).map(([g, p]) => `${GRADE_LABEL[g]}: ${p.mastered.length}/${WORD_LISTS[g].length} words mastered${p.lastTest ? `, last spelling test ${p.lastTest.score}/${p.lastTest.total}` : ""}`).join("; ");
-    const streakText = streakData ? `Current streak: ${streakData.currentStreak} days.` : "";
-    const prompt = `You're writing a brief, warm weekly note to a parent about their young child's reading practice this week, like a teacher's note home. Data: ${summary}. ${streakText} In 3-4 sentences: what's going well, what still needs work, and one plain, practical suggestion for the coming week. Warm but honest, no fluff, speak directly to the parent.`;
-    const reply = await askClaude(prompt, 400);
-    setWeeklyLoading(false);
-    if (!reply) {
-      // Show the error, but keep the last good note saved rather than overwriting it.
-      setWeeklyNote({ text: "Couldn't generate this week's note — try again in a moment.", date: todayStr(), failed: true });
-      return;
-    }
-    const note = { text: reply, date: todayStr() };
-    setWeeklyNote(note);
-    try { await window.storage.set(WEEKLY_NOTE_KEY, JSON.stringify(note)); } catch (e) {}
-  }
-
-  async function generatePatternReport() {
-    setPatternLoading(true);
-    if (missedPool.length === 0) {
-      setPatternReport("Not enough data yet — once he's missed some words across a few sessions, this will look for real patterns worth mentioning to a teacher.");
-      setPatternLoading(false);
-      return;
-    }
-    const words = missedPool.map((m) => m.word).join(", ");
-    const prompt = `A parent wants a factual, non-diagnostic summary of patterns in their young child's reading mistakes, written so they can share it with a teacher or pediatrician if useful. Here are words the child has gotten wrong recently across practice sessions: ${words}. Write 3-5 sentences: describe any real, specific patterns you notice (e.g., particular sounds, endings, letter confusions) — only mention patterns that are actually supported by the words listed. Do not diagnose any condition. Plain, clear, factual language a parent could literally copy into an email to a teacher.`;
-    const reply = await askClaude(prompt, 450);
-    setPatternLoading(false);
-    setPatternReport(reply || "Couldn't generate this right now — try again in a moment.");
-  }
+  // Computed straight from real saved data every render - always accurate,
+  // instant, and not dependent on any AI call.
+  const weeklyNote = { text: buildWeeklyNote(progress, missedPool, streakData) };
+  const patternReport = buildPatternReport(missedPool);
 
   return (
     <div className="max-w-md mx-auto pb-10">
@@ -3791,33 +3804,20 @@ function ProgressReport({ progress, onExit }) {
         )}
 
         <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #2B2250" }}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <Sparkles size={14} style={{ color: "#2B2250" }} />
-              <div className="font-black text-sm" style={{ color: "#2B2250" }}>This Week's Note</div>
-            </div>
-            <button onClick={generateWeeklyNote} disabled={weeklyLoading} className="kbtn text-xs font-black px-2.5 py-1 rounded-full" style={{ background: "#EEE6D6", color: "#2B2250", opacity: weeklyLoading ? 0.5 : 1 }}>
-              <RefreshCw size={11} className="inline mr-1" /> {weeklyNote ? "Refresh" : "Generate"}
-            </button>
+          <div className="flex items-center gap-1.5 mb-2">
+            <Sparkles size={14} style={{ color: "#2B2250" }} />
+            <div className="font-black text-sm" style={{ color: "#2B2250" }}>This Week's Note</div>
           </div>
-          {weeklyLoading && <div className="text-xs" style={{ color: "#8B8499" }}>Writing this week's note...</div>}
-          {weeklyNote && !weeklyLoading && <p className="text-sm" style={{ color: "#2B2250" }}>{weeklyNote.text}</p>}
-          {!weeklyNote && !weeklyLoading && <p className="text-xs" style={{ color: "#8B8499" }}>Tap Generate for a quick written summary of how this week went.</p>}
+          <p className="text-sm" style={{ color: "#2B2250" }}>{weeklyNote.text}</p>
         </div>
 
         <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #B5643A" }}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <FileText size={14} style={{ color: "#B5643A" }} />
-              <div className="font-black text-sm" style={{ color: "#2B2250" }}>Pattern Report</div>
-            </div>
-            <button onClick={generatePatternReport} disabled={patternLoading} className="kbtn text-xs font-black px-2.5 py-1 rounded-full" style={{ background: "#B5643A22", color: "#B5643A", opacity: patternLoading ? 0.5 : 1 }}>
-              <RefreshCw size={11} className="inline mr-1" /> {patternReport ? "Refresh" : "Generate"}
-            </button>
+          <div className="flex items-center gap-1.5 mb-2">
+            <FileText size={14} style={{ color: "#B5643A" }} />
+            <div className="font-black text-sm" style={{ color: "#2B2250" }}>Pattern Report</div>
           </div>
-          {patternLoading && <div className="text-xs" style={{ color: "#8B8499" }}>Looking for patterns...</div>}
-          {patternReport && !patternLoading && <p className="text-sm" style={{ color: "#2B2250" }}>{patternReport}</p>}
-          {!patternReport && !patternLoading && <p className="text-xs" style={{ color: "#8B8499" }}>A factual summary of real patterns in his mistakes — shareable with a teacher or pediatrician if it's ever useful. Not a diagnosis.</p>}
+          <p className="text-sm" style={{ color: "#2B2250" }}>{patternReport}</p>
+          <p className="text-xs mt-1.5" style={{ color: "#8B8499" }}>Shareable with a teacher or pediatrician if it's ever useful — it's not a diagnosis.</p>
         </div>
 
         <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
@@ -3895,8 +3895,8 @@ function ProgressReport({ progress, onExit }) {
               <h2>Progress by Grade Level</h2><ul>${perGrade}</ul>
               <h2>Most Frequently Missed Words</h2>
               <ul>${hardest || "<li>None recorded yet.</li>"}</ul>
-              ${patternReport ? `<h2>Observed Patterns</h2><div class="note">${escapeHtml(patternReport)}</div>` : ""}
-              ${weeklyNote && !weeklyNote.failed ? `<h2>Recent Summary</h2><div class="note">${escapeHtml(weeklyNote.text)}</div>` : ""}
+              <h2>Observed Patterns</h2><div class="note">${escapeHtml(patternReport)}</div>
+              <h2>Recent Summary</h2><div class="note">${escapeHtml(weeklyNote.text)}</div>
               <h2>Note</h2>
               <p style="font-size:12px;color:#6b6259">This summary reflects in-app practice only and is not a diagnostic assessment.</p>
             `);
@@ -6013,7 +6013,7 @@ function CombinedProgressReport({ onExit }) {
 
 // ===================== BACKUP / RESTORE =====================
 const WA_BACKUP_KEYS = [
-  STORAGE_KEY, MISSED_KEY, ACTIVITY_KEY, LAST_ACTIVITY_KEY, WEEKLY_NOTE_KEY,
+  STORAGE_KEY, MISSED_KEY, ACTIVITY_KEY, LAST_ACTIVITY_KEY,
   MATH_STORAGE_KEY, MATH_MISSED_KEY, MATH_ACTIVITY_KEY, MATH_LAST_ACTIVITY_KEY,
   STREAK_KEY, SPURTS_KEY, ANALYTICS_KEY, SETTINGS_KEY, PLACEMENT_KEY,
   "class-progress", "school-day", "video-choices", "homework", "rewards",
