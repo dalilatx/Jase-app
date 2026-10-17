@@ -831,10 +831,11 @@ const UPPER_SUBJECTS = {
   science: { label: "Science",        color: "#4F8A6B", tagline: "Life, earth & physical science" },
   social:  { label: "Social Studies", color: "#8E7CC3", tagline: "History, geography & civics" },
 };
-const UPPER_GRADES = ["4", "5"]; // grades with the hand-written lessons below
-// 6th-12th come from the K-12 skill map (src/curriculum/skillMap.js); Ms. Bright
-// writes each of those lessons the first time it's opened, and it's saved.
-const UPPER_ALL_GRADES = ["4", "5", "6", "7", "8", "9", "10", "11", "12"];
+// Upper Grades currently covers 4th-5th, where every lesson is hand-written
+// below. (6th-12th used to be written on the fly by the AI tutor; that's
+// been removed, and there's no real written curriculum for those grades
+// yet, so they're not offered rather than showing an empty/broken lesson.)
+const UPPER_GRADES = ["4", "5"];
 const UPPER_GRADE_LABEL = SKILL_GRADE_LABEL;
 
 const UPPER_CONTENT = {
@@ -1198,46 +1199,17 @@ function findUpperCard(subject, grade, topicId, q) {
   return card ? { ...card, topicId } : null;
 }
 
-// Lessons Ms. Bright has written for 6th-12th, saved per subject and grade:
-// { [skillId]: { lesson, cards: [{ q, a }], generatedAt } }
-function upperAiLessonsKey(subject, grade) { return `upper:ai-lessons:${subject}:${grade}`; }
-
-// The lesson list for a subject and grade: hand-written for 4th-5th, skill-map
-// topics (plus any lessons already written) for 6th-12th.
-function upperTopicsFor(subject, grade, aiLessons) {
-  if (UPPER_CONTENT[subject][grade]) return UPPER_CONTENT[subject][grade];
-  return skillsFor(subject, grade).map((sk) => ({ id: sk.id, title: sk.title, focus: sk.focus, ai: true, ...((aiLessons && aiLessons[sk.id]) || {}) }));
+// The lesson list for a subject and grade. Upper Grades currently only
+// covers 4th-5th, where every lesson is hand-written and ready immediately
+// (no on-demand generation, so there's nothing to write or wait for).
+function upperTopicsFor(subject, grade) {
+  return UPPER_CONTENT[subject][grade] || [];
 }
 function cardsFromTopics(topics) {
   const out = [];
   topics.forEach((t) => (t.cards || []).forEach((c) => out.push({ ...c, topicId: t.id, topicTitle: t.title })));
   return out;
 }
-
-async function generateUpperLesson(subject, grade, topic) {
-  const prompt = `Write a short lesson for a ${UPPER_GRADE_LABEL[grade]} student in ${UPPER_SUBJECTS[subject].label} on "${topic.title}" (${topic.focus}).
-
-Respond ONLY with JSON in exactly this shape: {"lesson": "...", "cards": [{"q": "...", "a": "..."}]}
-
-- "lesson": 120-180 words. Explain the idea in plain language, then walk through one worked example step by step. You may separate paragraphs with a blank line.
-- "cards": exactly 6 practice questions on this lesson. Each "q" is a clear, self-contained question. Each "a" is the correct answer in under 12 words. All six answers must be different from each other.`;
-  const { text, error } = await askClaudeDetailed(prompt, 2000, UPPER_LESSON_SCHEMA);
-  if (error) return { error };
-  const parsed = extractJson(text);
-  if (!parsed || typeof parsed.lesson !== "string" || !Array.isArray(parsed.cards)) return { error: "The lesson came back incomplete." };
-  const cards = parsed.cards
-    .filter((c) => c && typeof c.q === "string" && typeof c.a === "string" && c.q.trim() && c.a.trim())
-    .map((c) => ({ q: c.q.trim(), a: c.a.trim() }));
-  if (parsed.lesson.trim().length < 40 || cards.length < 4) return { error: "The lesson came back incomplete." };
-  return { written: { lesson: parsed.lesson.trim(), cards, generatedAt: todayStr() } };
-}
-const UPPER_LESSON_SCHEMA = {
-  type: "object", additionalProperties: false, required: ["lesson", "cards"],
-  properties: {
-    lesson: { type: "string" },
-    cards: { type: "array", items: { type: "object", additionalProperties: false, required: ["q", "a"], properties: { q: { type: "string" }, a: { type: "string" } } } },
-  },
-};
 
 const SENTENCE_POOLS = {
   K: [
@@ -1986,7 +1958,6 @@ function LearnMode({ grade, onExit, onMaster, onMiss, idx, setIdx }) {
   const [typed, setTyped] = useState("");
   const [status, setStatus] = useState(null);
   const [tip, setTip] = useState(null);
-  const [tipLoading, setTipLoading] = useState(false);
   const inputRef = useRef(null);
   const word = order[idx];
   const color = GRADE_COLOR[grade];
@@ -1996,18 +1967,8 @@ function LearnMode({ grade, onExit, onMaster, onMiss, idx, setIdx }) {
     setTyped("");
     setStatus(null);
     setTip(null);
-    setTipLoading(false);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [idx, word]);
-
-  async function getPhonicsTip() {
-    setTipLoading(true);
-    const prompt = `A young child learning to read (${GRADE_LABEL[grade]}) was asked to spell the word "${word}" and typed "${typed.trim() || "(nothing)"}" instead. In 1-2 short, warm, simple sentences (spoken directly to the child, plain language, no jargon), explain the specific sound or letter pattern in "${word}" that's probably tricky, and give one quick tip to remember it.`;
-    const reply = await askClaude(prompt, 200);
-    setTipLoading(false);
-    setTip(reply || "Let's try sounding it out slowly, one letter at a time.");
-    if (reply) speak(reply, 0.9);
-  }
 
   function check() {
     if (typed.trim().toLowerCase() === word.toLowerCase()) {
@@ -2021,6 +1982,8 @@ function LearnMode({ grade, onExit, onMaster, onMiss, idx, setIdx }) {
       playChime(false);
       recordActivity(ACTIVITY_KEY, false);
       if (onMiss) onMiss(grade, word);
+      const diag = diagnoseSpellingMiss(typed, word);
+      setTip(diag ? diag.text : "Let's try sounding it out slowly, one letter at a time.");
     }
   }
   function next() {
@@ -2047,12 +2010,6 @@ function LearnMode({ grade, onExit, onMaster, onMiss, idx, setIdx }) {
         {status === "wrong" && (
           <div className="mb-4">
             <div className="flex items-center justify-center gap-2 font-bold mb-2" style={{ color: "#D98551" }}><XCircle size={18} /> Try again — sound it out</div>
-            {!tip && !tipLoading && (
-              <button onClick={getPhonicsTip} className="kbtn inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full" style={{ background: "#D9855122", color: "#D98551", border: "1px solid #D98551" }}>
-                <Sparkles size={12} /> Why is this tricky?
-              </button>
-            )}
-            {tipLoading && <div className="text-xs" style={{ color: "#8B8499" }}>Thinking...</div>}
             {tip && <div className="text-sm mt-2 p-3 rounded-xl" style={{ background: "#D9855114", color: "#2B2250" }}>{tip}</div>}
           </div>
         )}
@@ -2068,41 +2025,55 @@ function LearnMode({ grade, onExit, onMaster, onMiss, idx, setIdx }) {
   );
 }
 
+// A handful of common English spelling patterns (blends, digraphs, vowel
+// teams) worth naming to a parent. Checked in order; longer/more specific
+// patterns are listed first so e.g. "augh" wins over a coincidental "au".
+const SPELLING_PATTERNS = [
+  "ought", "augh", "eigh", "ough", "tion", "sion", "ture", "ould",
+  "air", "are", "ear", "eer", "oor", "our", "ar", "er", "ir", "or", "ur",
+  "ch", "sh", "th", "wh", "ph", "ck", "ng", "nk",
+  "bl", "cl", "fl", "gl", "pl", "sl", "br", "cr", "dr", "fr", "gr", "pr", "tr", "sp", "st", "sw",
+  "oa", "ee", "ea", "ai", "ay", "oe", "ow", "ou", "oi", "oy", "au", "aw", "ew", "ue", "ie",
+];
+// Finds a spelling pattern shared by at least a couple of the missed words
+// (or the one missed word, if there's only one), then gathers grade words
+// that share it for targeted practice — the same idea an AI analysis would
+// have done, but computed directly from the word lists instead of guessed.
+function findSharedSpellingPattern(missedWords, gradeWords) {
+  const lower = missedWords.map((w) => w.toLowerCase());
+  const minNeeded = Math.min(2, lower.length);
+  let best = null, bestCount = 0;
+  for (const pat of SPELLING_PATTERNS) {
+    const count = lower.filter((w) => w.includes(pat)).length;
+    if (count >= minNeeded && count > bestCount) { best = pat; bestCount = count; }
+  }
+  if (!best) return null;
+  const words = gradeWords.filter((w) => w.toLowerCase().includes(best));
+  return { pattern: best, words };
+}
+
 function SmartPracticeMode({ grade, pool, onMaster, onExit }) {
   const color = "#B5643A";
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
-  const [order, setOrder] = useState([]);
+  const [analysis] = useState(() => {
+    const missedWords = pool.filter((m) => m.grade === grade).map((m) => m.word);
+    if (missedWords.length === 0) return { empty: true };
+    const found = findSharedSpellingPattern(missedWords, WORD_LISTS[grade]);
+    if (found && found.words.length >= 2) {
+      return {
+        pattern: `"${found.pattern}"`,
+        explanation: `These words all share the letters "${found.pattern}" — practicing them together should help it click.`,
+        words: found.words.slice(0, 8),
+      };
+    }
+    // No single clear pattern - just review the words that have actually been tricky lately.
+    const padded = missedWords.length >= 4 ? missedWords : [...missedWords, ...shuffle(WORD_LISTS[grade].filter((w) => !missedWords.includes(w))).slice(0, 4 - missedWords.length)];
+    return { pattern: "recent misses", explanation: "These are words that have been tricky recently — let's review them together.", words: padded.slice(0, 8) };
+  });
+  const [order] = useState(() => shuffle(analysis.words || []));
   const [idx, setIdx] = useState(0);
   const [typed, setTyped] = useState("");
   const [status, setStatus] = useState(null);
   const inputRef = useRef(null);
-
-  async function analyze() {
-    setLoading(true);
-    setError(false);
-    const missedWords = pool.filter((m) => m.grade === grade).map((m) => m.word);
-    if (missedWords.length === 0) {
-      setLoading(false);
-      setError("empty");
-      return;
-    }
-    const allWords = WORD_LISTS[grade].join(", ");
-    const prompt = `A child learning to read has recently gotten these sight words wrong: ${missedWords.join(", ")}. Looking at these words, identify the single most likely shared sound or spelling pattern causing the trouble (like a specific ending, blend, or silent letter). Then, from this full word list: ${allWords} — pick up to 8 words (can include the missed ones and similar ones) that share that same pattern, best for targeted practice. Respond ONLY with JSON, no markdown fences: {"pattern": "short pattern name", "explanation": "1-2 encouraging sentences a parent could read, explaining the pattern plainly", "words": ["...", "..."]}`;
-    const reply = await askClaude(prompt, 500);
-    const parsed = extractJson(reply);
-    setLoading(false);
-    if (parsed && parsed.words && parsed.words.length > 0) {
-      setAnalysis(parsed);
-      const inList = parsed.words.filter((w) => WORD_LISTS[grade].includes(w));
-      setOrder(shuffle(inList.length > 0 ? inList : parsed.words));
-    } else {
-      setError(true);
-    }
-  }
-
-  useEffect(() => { analyze(); }, []); // eslint-disable-line
 
   useEffect(() => {
     if (order.length === 0) return;
@@ -2116,8 +2087,6 @@ function SmartPracticeMode({ grade, pool, onMaster, onExit }) {
     const word = order[idx];
     if (typed.trim().toLowerCase() === word.toLowerCase()) {
       setStatus("correct");
-      // The AI may suggest practice words that aren't on this grade's list;
-      // only list words count toward mastery (otherwise counts pass 100%).
       if (WORD_LISTS[grade].includes(word)) onMaster(grade, word);
       playChime(true);
       speak("Great job!");
@@ -2132,19 +2101,7 @@ function SmartPracticeMode({ grade, pool, onMaster, onExit }) {
     if (idx + 1 < order.length) setIdx(idx + 1); else onExit();
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-md mx-auto pb-10">
-        <TopBar title="Smart Practice" color={color} onExit={onExit} />
-        <div className="px-5 pt-10 text-center">
-          <div className="text-4xl mb-3">🔍</div>
-          <div className="text-sm font-bold" style={{ color: "#8B8499" }}>Looking at what's been tricky lately...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error === "empty") {
+  if (analysis.empty) {
     return (
       <div className="max-w-md mx-auto pb-10">
         <TopBar title="Smart Practice" color={color} onExit={onExit} />
@@ -2157,18 +2114,6 @@ function SmartPracticeMode({ grade, pool, onMaster, onExit }) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="max-w-md mx-auto pb-10">
-        <TopBar title="Smart Practice" color={color} onExit={onExit} />
-        <div className="px-5 pt-10 text-center">
-          <div className="text-sm font-bold mb-3" style={{ color: "#D98551" }}>Couldn't reach the tutor — check your connection and try again.</div>
-          <button onClick={analyze} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: color }}>Try Again</button>
-        </div>
-      </div>
-    );
-  }
-
   const word = order[idx];
 
   return (
@@ -2176,7 +2121,7 @@ function SmartPracticeMode({ grade, pool, onMaster, onExit }) {
       <TopBar title="Smart Practice" color={color} onExit={onExit} />
       <div className="px-5 pt-6">
         <div className="rounded-2xl p-4 mb-5" style={{ background: `${color}14`, border: `2px solid ${color}` }}>
-          <div className="font-black text-xs uppercase tracking-widest mb-1" style={{ color }}>Pattern found: {analysis.pattern}</div>
+          <div className="font-black text-xs uppercase tracking-widest mb-1" style={{ color }}>{analysis.pattern === "recent misses" ? "Today's practice" : `Pattern found: ${analysis.pattern}`}</div>
           <p className="text-sm" style={{ color: "#2B2250" }}>{analysis.explanation}</p>
         </div>
 
@@ -2794,13 +2739,9 @@ function BalloonPopMode({ grade, onExit }) {
 
 function StoriesMode({ grade, onExit }) {
   const [openIdx, setOpenIdx] = useState(null);
-  const [aiMode, setAiMode] = useState(false);
   const color = "#6FAE8B";
   const stories = STORIES[grade];
 
-  if (aiMode) {
-    return <AIStoryMode grade={grade} onExit={onExit} onBack={() => setAiMode(false)} />;
-  }
   if (openIdx !== null) {
     return <StoryReader story={stories[openIdx]} grade={grade} color={color} onBack={() => setOpenIdx(null)} onExit={onExit} />;
   }
@@ -2809,17 +2750,6 @@ function StoriesMode({ grade, onExit }) {
     <div className="max-w-md mx-auto pb-10">
       <TopBar title={`Story Time · ${GRADE_LABEL[grade]}`} color={color} onExit={onExit} />
       <div className="px-5 pt-5">
-        <button onClick={() => setAiMode(true)} className="kbtn w-full rounded-2xl p-4 mb-5 flex items-center gap-3 text-left" style={{ background: "#2B2250" }}>
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
-            <Sparkles size={20} color="#fff" />
-          </div>
-          <div className="flex-1">
-            <div className="text-white font-black text-sm">Make Me a New Story</div>
-            <div className="text-xs" style={{ color: "#C9C2D6" }}>About anything he's into — a brand new one every time</div>
-          </div>
-          <ArrowRight size={18} color="#fff" />
-        </button>
-
         <p className="text-xs mb-4" style={{ color: "#8B8499" }}>
           His sight words are highlighted in each story — tap any highlighted word to hear it.
         </p>
@@ -2840,105 +2770,6 @@ function StoriesMode({ grade, onExit }) {
             </button>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
-
-const TOPIC_EMOJI = {
-  dinosaur: "🦕", dinosaurs: "🦕", truck: "🚚", trucks: "🚚", car: "🚗", cars: "🚗",
-  dog: "🐶", dogs: "🐶", cat: "🐱", cats: "🐱", space: "🚀", rocket: "🚀",
-  animal: "🐾", animals: "🐾", princess: "👸", superhero: "🦸", superheroes: "🦸",
-  dragon: "🐉", dragons: "🐉", ocean: "🌊", shark: "🦈", sharks: "🦈", robot: "🤖", robots: "🤖",
-  unicorn: "🦄", unicorns: "🦄", pirate: "🏴‍☠️", pirates: "🏴‍☠️", horse: "🐴", horses: "🐴",
-};
-function emojiForTopic(topic) {
-  const key = topic.toLowerCase().trim();
-  for (const k in TOPIC_EMOJI) if (key.includes(k)) return TOPIC_EMOJI[k];
-  return "✨";
-}
-
-function AIStoryMode({ grade, onExit, onBack }) {
-  const color = "#6FAE8B";
-  const [topic, setTopic] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [story, setStory] = useState(null);
-  const CHIPS = ["Dinosaurs", "Trucks & Cars", "My Pet", "Space", "Superheroes", "Animals"];
-
-  async function generate(chosenTopic) {
-    setLoading(true);
-    setError(false);
-    const words = WORD_LISTS[grade].join(", ");
-    const prompt = `Write a very short story for a ${GRADE_LABEL[grade]} child learning to read, about "${chosenTopic}". Use mostly these sight words: ${words} — plus simple, short, decodable filler words. Keep it to 5-7 short, simple sentences, upbeat and fun. Then write one easy comprehension question about it with 3 multiple choice answers (only one correct). Respond ONLY with JSON, no markdown fences, in exactly this shape: {"title": "...", "text": "...", "question": {"prompt": "...", "options": ["...","...","..."], "correct": 0}}`;
-    const reply = await askClaude(prompt, 700);
-    const parsed = extractJson(reply);
-    setLoading(false);
-    if (parsed && parsed.title && parsed.text && parsed.question) {
-      setStory({ ...parsed, scene: "ai", topic: chosenTopic });
-    } else {
-      setError(true);
-    }
-  }
-
-  if (story) {
-    const emoji = emojiForTopic(story.topic);
-    return (
-      <StoryReader
-        story={story}
-        grade={grade}
-        color={color}
-        onBack={() => setStory(null)}
-        onExit={onExit}
-        illustrationOverride={
-          <div className="w-full h-full flex items-center justify-center text-6xl" style={{ background: "linear-gradient(180deg,#E8F0FA,#FFFBF2)" }}>{emoji}</div>
-        }
-      />
-    );
-  }
-
-  return (
-    <div className="max-w-md mx-auto pb-10">
-      <TopBar title="Make Me a New Story" color={color} onExit={onBack} />
-      <div className="px-5 pt-6">
-        {!loading && (
-          <>
-            <p className="text-sm mb-4" style={{ color: "#8B8499" }}>What should the story be about?</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {CHIPS.map((c) => (
-                <button key={c} onClick={() => generate(c)} className="kbtn px-3 py-2 rounded-full font-bold text-sm" style={{ background: "#FFFBF2", color: "#2B2250", border: "1px solid #EEE6D6" }}>
-                  {c}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2 mb-3">
-              <input
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && topic.trim() && generate(topic.trim())}
-                placeholder="Or type your own idea..."
-                className="flex-1 text-sm px-4 py-3 rounded-xl outline-none"
-                style={{ border: "2px solid #EEE6D6", color: "#2B2250" }}
-              />
-              <button onClick={() => topic.trim() && generate(topic.trim())} disabled={!topic.trim()} className="kbtn w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: color, opacity: topic.trim() ? 1 : 0.5 }}>
-                <Send size={18} color="#fff" />
-              </button>
-            </div>
-          </>
-        )}
-
-        {loading && (
-          <div className="rounded-2xl p-8 text-center" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
-            <div className="text-4xl mb-3">✍️</div>
-            <div className="text-sm font-bold" style={{ color: "#8B8499" }}>Writing your story...</div>
-          </div>
-        )}
-
-        {error && !loading && (
-          <div className="rounded-2xl p-5 text-center" style={{ background: "#fff", border: "2px solid #D98551" }}>
-            <div className="text-sm font-bold mb-3" style={{ color: "#D98551" }}>Couldn't reach the tutor — check your connection and try again.</div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -5427,83 +5258,11 @@ const MATH_SCENE_STICKERS = {
   roadtrip: ["🚗", "🛣️", "🗺️"],
 };
 
-function AIWordProblemMode({ grade, onExit, onBack }) {
-  const color = "#1D7A4C";
-  const [topic, setTopic] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [problem, setProblem] = useState(null);
-  const CHIPS = ["Dinosaurs", "Video Games", "Sports", "Space", "Animals", "Snacks"];
-
-  async function generate(chosenTopic) {
-    setLoading(true);
-    setError(false);
-    const facts = factList(grade).slice(0, 10).map((f) => factDisplay(f)).join(", ");
-    const prompt = `Write one short math word problem for a ${MATH_GRADE_LABEL[grade]} student, themed around "${chosenTopic}". Base the numbers/operation on this student's current level, similar to these example facts: ${facts}. Keep it to 2-3 short sentences, fun and concrete. Then give the numeric answer and one comprehension-style question with 3 multiple choice numeric answers (only one correct). Respond ONLY with JSON, no markdown fences: {"title": "...", "text": "...", "question": {"prompt": "...", "options": [n1, n2, n3], "correct": 0}}`;
-    const reply = await askClaude(prompt, 500);
-    const parsed = extractJson(reply);
-    setLoading(false);
-    if (parsed && parsed.title && parsed.text && parsed.question) {
-      setProblem({ ...parsed, scene: "ai-" + chosenTopic });
-    } else {
-      setError(true);
-    }
-  }
-
-  if (problem) {
-    return <WordProblemReader problem={problem} color={color} onBack={() => setProblem(null)} onExit={onExit} />;
-  }
-
-  return (
-    <div className="max-w-md mx-auto pb-10">
-      <MathTopBar title="Make Me a Problem" color={color} onExit={onBack} />
-      <div className="px-5 pt-6">
-        {!loading && (
-          <>
-            <p className="text-sm mb-4" style={{ color: "#5B6B7A" }}>What should the problem be about?</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {CHIPS.map((c) => (
-                <button key={c} onClick={() => generate(c)} className="kbtn px-3 py-2 rounded-full font-bold text-sm" style={{ background: "#F5F8FC", color: "#1B2430", border: "1px solid #E7ECFA" }}>{c}</button>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && topic.trim() && generate(topic.trim())}
-                placeholder="Or type your own idea..."
-                className="flex-1 text-sm px-4 py-3 rounded-xl outline-none"
-                style={{ border: "2px solid #E7ECFA", color: "#1B2430" }}
-              />
-              <button onClick={() => topic.trim() && generate(topic.trim())} disabled={!topic.trim()} className="kbtn w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: color, opacity: topic.trim() ? 1 : 0.5 }}>
-                <Send size={18} color="#fff" />
-              </button>
-            </div>
-          </>
-        )}
-        {loading && (
-          <div className="rounded-2xl p-8 text-center" style={{ background: "#fff", border: "2px solid #E7ECFA" }}>
-            <div className="text-4xl mb-3">✍️</div>
-            <div className="text-sm font-bold" style={{ color: "#5B6B7A" }}>Writing your problem...</div>
-          </div>
-        )}
-        {error && !loading && (
-          <div className="rounded-2xl p-5 text-center" style={{ background: "#fff", border: "2px solid #D98551" }}>
-            <div className="text-sm font-bold" style={{ color: "#D98551" }}>Couldn't reach the tutor — check your connection and try again.</div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function WordProblemsMode({ grade, onExit }) {
   const [openIdx, setOpenIdx] = useState(null);
-  const [aiMode, setAiMode] = useState(false);
   const color = "#1D7A4C";
   const problems = WORD_PROBLEMS[grade];
 
-  if (aiMode) return <AIWordProblemMode grade={grade} onExit={onExit} onBack={() => setAiMode(false)} />;
   if (openIdx !== null) {
     return <WordProblemReader problem={problems[openIdx]} color={color} onBack={() => setOpenIdx(null)} onExit={onExit} />;
   }
@@ -5512,17 +5271,6 @@ function WordProblemsMode({ grade, onExit }) {
     <div className="max-w-md mx-auto pb-10">
       <MathTopBar title={`Word Problems · ${MATH_GRADE_LABEL[grade]}`} color={color} onExit={onExit} />
       <div className="px-5 pt-5">
-        <button onClick={() => setAiMode(true)} className="kbtn w-full rounded-2xl p-4 mb-5 flex items-center gap-3 text-left" style={{ background: "#1B2430" }}>
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
-            <Sparkles size={20} color="#fff" />
-          </div>
-          <div className="flex-1">
-            <div className="text-white font-black text-sm">Make Me a New Problem</div>
-            <div className="text-xs" style={{ color: "#B8C4E0" }}>About whatever he's into — a fresh one every time</div>
-          </div>
-          <ArrowRight size={18} color="#fff" />
-        </button>
-
         <p className="text-xs mb-4" style={{ color: "#5B6B7A" }}>Numbers are highlighted — tap any number to hear it.</p>
         <div className="space-y-3">
           {problems.map((p, i) => (
@@ -6509,77 +6257,13 @@ function UpperTopicList({ subject, grade, topics, cardCount, onOpenTopic, onExit
   );
 }
 
-function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice, onLessonReady }) {
+function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice }) {
   const s = UPPER_SUBJECTS[subject];
-  const [chatOpen, setChatOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const scrollRef = useRef(null);
-  const [writeState, setWriteState] = useState(topic.lesson ? "ready" : "writing"); // writing | ready | error
-  const [writeError, setWriteError] = useState("");
-  const [attempt, setAttempt] = useState(0);
-
-  // 6th-12th lessons are written by Ms. Bright the first time they're opened.
-  useEffect(() => {
-    if (topic.lesson) { setWriteState("ready"); return; }
-    let live = true;
-    setWriteState("writing");
-    (async () => {
-      const { written, error } = await generateUpperLesson(subject, grade, topic);
-      if (!live) return;
-      if (written) { onLessonReady(topic.id, written); setWriteState("ready"); }
-      else { setWriteError(error || ""); setWriteState("error"); }
-    })();
-    return () => { live = false; };
-  }, [topic.id, attempt]); // eslint-disable-line
-
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, loading]);
-
-  async function sendMessage() {
-    const text = input.trim();
-    if (!text || loading) return;
-    const nextMessages = [...messages, { role: "user", content: text }];
-    setMessages(nextMessages);
-    setInput("");
-    setLoading(true);
-    const history = nextMessages.map((m) => `${m.role === "user" ? "Student" : "Tutor"}: ${m.content}`).join("\n");
-    const prompt = `You are a warm, encouraging tutor helping a ${UPPER_GRADE_LABEL[grade]} student understand this lesson:\n\nTopic: ${topic.title}\nLesson: ${topic.lesson}\n\nConversation so far:\n${history}\n\nRespond to the student's latest message. Keep your answer short (2-4 sentences), clear, age-appropriate, and encouraging. If they ask something unrelated to this lesson or off-topic, gently redirect them back to ${topic.title}.`;
-    const reply = await askClaude(prompt, 400);
-    setLoading(false);
-    setMessages((m) => [...m, { role: "assistant", content: reply || "Sorry, I couldn't think of an answer just now — try asking again." }]);
-  }
-
-  if (writeState !== "ready" || !topic.lesson) {
-    return (
-      <div className="max-w-md mx-auto pb-10">
-        <UpperTopBar title={topic.title} color={s.color} onExit={onExit} onBack={onBack} />
-        <div className="px-5 pt-10 text-center">
-          {writeState === "error" ? (
-            <div className="rounded-2xl p-5" style={{ background: "#fff", border: "2px solid #D98551" }}>
-              <div className="text-sm font-bold mb-2" style={{ color: "#D98551" }}>Ms. Bright couldn't write this lesson right now.</div>
-              <div className="text-xs mb-3" style={{ color: "#8B8499" }}>Check your connection and try again. If it keeps happening, a grown-up may need to finish the AI setup.</div>
-              {writeError && <div className="text-xs text-left p-2.5 rounded-lg mb-4" style={{ background: "#F5F5F0", color: "#5B6B7A" }}><b>For grown-ups:</b> {writeError}</div>}
-              <button onClick={() => setAttempt((n) => n + 1)} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: s.color }}>Try Again</button>
-            </div>
-          ) : (
-            <div className="rounded-2xl p-8" style={{ background: "#fff", border: `2px solid ${s.color}` }}>
-              <div className="text-4xl mb-3">✏️</div>
-              <div className="text-sm font-bold" style={{ color: "#8B8499" }}>Ms. Bright is writing your lesson on {topic.title}...</div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-md mx-auto pb-10">
       <UpperTopBar title={topic.title} color={s.color} onExit={onExit} onBack={onBack} />
       <div className="px-5 pt-5">
-        <div className="rounded-2xl p-4 mb-4" style={{ background: "#fff", border: `2px solid ${s.color}` }}>
+        <div className="rounded-2xl p-4 mb-5" style={{ background: "#fff", border: `2px solid ${s.color}` }}>
           <div className="flex items-center justify-between mb-2">
             <div className="font-black text-xs uppercase tracking-widest" style={{ color: s.color }}>Lesson</div>
             <button onClick={() => speak(topic.lesson, 0.95)} className="kbtn w-8 h-8 rounded-full flex items-center justify-center" style={{ background: `${s.color}22`, color: s.color }}>
@@ -6588,42 +6272,6 @@ function UpperLesson({ subject, grade, topic, onBack, onExit, onDonePractice, on
           </div>
           <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#2B2250" }}>{topic.lesson}</p>
         </div>
-
-        {!chatOpen ? (
-          <button onClick={() => setChatOpen(true)} className="kbtn w-full rounded-2xl p-4 mb-5 flex items-center gap-3 text-left" style={{ background: "#2B2250" }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
-              <MessageCircle size={18} color="#fff" />
-            </div>
-            <div className="flex-1">
-              <div className="text-white font-black text-sm">Ask Ms. Bright</div>
-              <div className="text-xs" style={{ color: "#C9C2D6" }}>Confused? Ask a question about this lesson</div>
-            </div>
-          </button>
-        ) : (
-          <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: "#fff", border: `2px solid ${s.color}` }}>
-            <div className="px-4 py-3 flex items-center justify-between" style={{ background: `${s.color}14` }}>
-              <div className="font-black text-xs flex items-center gap-1.5" style={{ color: s.color }}><MessageCircle size={14} /> Ask Ms. Bright</div>
-              <button onClick={() => setChatOpen(false)} className="text-xs font-bold" style={{ color: "#8B8499" }}>Hide</button>
-            </div>
-            <div ref={scrollRef} className="px-4 py-3 space-y-2.5 overflow-y-auto" style={{ maxHeight: 260 }}>
-              {messages.length === 0 && <div className="text-xs" style={{ color: "#8B8499" }}>Ask anything about {topic.title.toLowerCase()} — no question is too small.</div>}
-              {messages.map((m, i) => (
-                <div key={i} className={`text-sm rounded-xl px-3 py-2 max-w-[85%] ${m.role === "user" ? "ml-auto" : ""}`}
-                  style={{ background: m.role === "user" ? s.color : "#F5F5F0", color: m.role === "user" ? "#fff" : "#2B2250" }}>
-                  {m.content}
-                </div>
-              ))}
-              {loading && <div className="text-xs" style={{ color: "#8B8499" }}>Thinking...</div>}
-            </div>
-            <div className="px-3 py-2.5 flex gap-2" style={{ borderTop: "1px solid #EEE6D6" }}>
-              <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder="Ask a question..." className="flex-1 text-sm px-3 py-2 rounded-lg outline-none" style={{ border: "1.5px solid #EEE6D6", color: "#2B2250" }} />
-              <button onClick={sendMessage} disabled={!input.trim() || loading} className="kbtn w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: s.color, opacity: input.trim() && !loading ? 1 : 0.5 }}>
-                <Send size={14} color="#fff" />
-              </button>
-            </div>
-          </div>
-        )}
 
         <button onClick={onDonePractice} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2" style={{ background: s.color }}>
           Practice This Topic <ArrowRight size={16} />
@@ -6639,18 +6287,8 @@ function UpperPractice({ subject, grade, topic, onBack, onExit, onComplete, onMi
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState(null);
   const [checked, setChecked] = useState(false);
-  const [tip, setTip] = useState(null);
-  const [tipLoading, setTipLoading] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
   const q = questions[idx];
-
-  async function getWhyWrongTip() {
-    setTipLoading(true);
-    const prompt = `A ${UPPER_GRADE_LABEL[grade]} student was asked: "${q.q}" (topic: ${topic.title}). They answered "${q.options[picked]}" but the correct answer is "${q.a}". In 1-2 short, encouraging sentences spoken directly to the student, explain why their answer isn't quite right and give a quick way to remember the correct idea.`;
-    const reply = await askClaude(prompt, 220);
-    setTipLoading(false);
-    setTip(reply || "Take another look at the lesson above — you're close!");
-  }
 
   function choose(i) {
     if (checked) return;
@@ -6659,7 +6297,6 @@ function UpperPractice({ subject, grade, topic, onBack, onExit, onComplete, onMi
   function check() {
     if (picked === null) return;
     setChecked(true);
-    setTip(null);
     const correct = picked === q.correctIndex;
     recordActivity(UPPER_ACTIVITY_KEY, correct);
     if (correct) {
@@ -6676,7 +6313,6 @@ function UpperPractice({ subject, grade, topic, onBack, onExit, onComplete, onMi
       setIdx(idx + 1);
       setPicked(null);
       setChecked(false);
-      setTip(null);
     } else {
       onComplete({ correct: correctCount, total: questions.length });
     }
@@ -6707,14 +6343,8 @@ function UpperPractice({ subject, grade, topic, onBack, onExit, onComplete, onMi
         </div>
 
         {checked && picked !== q.correctIndex && (
-          <div className="mb-4">
-            {!tip && !tipLoading && (
-              <button onClick={getWhyWrongTip} className="kbtn inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full" style={{ background: `${s.color}22`, color: s.color, border: `1px solid ${s.color}` }}>
-                <Sparkles size={12} /> Why was this wrong?
-              </button>
-            )}
-            {tipLoading && <div className="text-xs" style={{ color: "#8B8499" }}>Thinking...</div>}
-            {tip && <div className="text-sm mt-2 p-3 rounded-xl" style={{ background: `${s.color}14`, color: "#2B2250" }}>{tip}</div>}
+          <div className="mb-4 text-sm p-3 rounded-xl" style={{ background: `${s.color}14`, color: "#2B2250" }}>
+            Take another look at the lesson above — the correct answer is highlighted in green.
           </div>
         )}
 
@@ -7186,11 +6816,10 @@ function UpperNeedsPracticeMode({ subject, grade, pool, extraCards, onSolved, on
 
 function UpperSection({ onSwitchSubject, startAt }) {
   // A placement result can open a subject and grade directly.
-  const startHere = startAt && UPPER_SUBJECTS[startAt.subject] && UPPER_ALL_GRADES.includes(startAt.grade) ? startAt : null;
+  const startHere = startAt && UPPER_SUBJECTS[startAt.subject] && UPPER_GRADES.includes(startAt.grade) ? startAt : null;
   const [subject, setSubject] = useState(startHere ? startHere.subject : null);
   const [grade, setGrade] = useState(startHere ? startHere.grade : "4");
   const [view, setView] = useState(startHere ? "topics" : "subjects"); // subjects | topics | lesson | practice | test | speed | balloons | memory
-  const [aiLessons, setAiLessons] = useState({});
   const [activeTopic, setActiveTopic] = useState(null);
   const [progress, setProgress] = useState({});
   const [missedPool, setMissedPool] = useState([]);
@@ -7247,30 +6876,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
     saveProgress(next);
   }
 
-  // Load Ms. Bright's saved lessons for the open subject and grade.
-  useEffect(() => {
-    setAiLessons({});
-    if (!subject || UPPER_CONTENT[subject][grade]) return;
-    let live = true;
-    (async () => {
-      try {
-        const res = await window.storage.get(upperAiLessonsKey(subject, grade));
-        if (live && res && res.value) setAiLessons(JSON.parse(res.value));
-      } catch (e) {}
-    })();
-    return () => { live = false; };
-  }, [subject, grade]);
-
-  function saveAiLesson(topicId, written) {
-    setAiLessons((prev) => {
-      const next = { ...prev, [topicId]: written };
-      try { window.storage.set(upperAiLessonsKey(subject, grade), JSON.stringify(next)); } catch (e) {}
-      return next;
-    });
-    setActiveTopic((t) => (t && t.id === topicId ? { ...t, ...written } : t));
-  }
-
-  const topics = subject ? upperTopicsFor(subject, grade, aiLessons) : [];
+  const topics = subject ? upperTopicsFor(subject, grade) : [];
   const gradeCards = subject ? cardsFromTopics(topics) : [];
   const missedCountForSubject = subject ? missedPool.filter((m) => m.subject === subject && m.grade === grade).length : 0;
 
@@ -7300,7 +6906,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
       {view === "subjects" && (
         <>
           <div className="max-w-md mx-auto px-5 pt-5 flex flex-wrap justify-end gap-2">
-            {UPPER_ALL_GRADES.map((g) => (
+            {UPPER_GRADES.map((g) => (
               <button key={g} onClick={() => setGrade(g)} className="kbtn px-3 py-1.5 rounded-full font-black text-xs" style={{ background: grade === g ? "#2B2250" : "#EEE6D6", color: grade === g ? "#fff" : "#2B2250" }}>
                 {UPPER_GRADE_LABEL[g]}
               </button>
@@ -7315,7 +6921,7 @@ function UpperSection({ onSwitchSubject, startAt }) {
       )}
       {view === "lesson" && subject && activeTopic && (
         <UpperLesson subject={subject} grade={grade} topic={activeTopic} onBack={goTopics} onExit={goSubjects}
-          onDonePractice={() => setView("practice")} onLessonReady={saveAiLesson} />
+          onDonePractice={() => setView("practice")} />
       )}
       {view === "practice" && subject && activeTopic && (
         <UpperPractice subject={subject} grade={grade} topic={activeTopic} onBack={() => setView("lesson")} onExit={goSubjects}
@@ -8754,15 +8360,6 @@ async function loadArcadeSources() {
   ["K", "1", "2", "3", "4", "5"].forEach((g) => sources.push({ id: `words-${g}`, group: "Sight Words (listening)", label: GRADE_LABEL[g], questions: () => arcadeWordQuestions(g) }));
   Object.keys(UPPER_SUBJECTS).forEach((s) => UPPER_GRADES.forEach((g) => sources.push({ id: `upper-${s}-${g}`, group: "Upper Grades", label: `${UPPER_SUBJECTS[s].label} · ${UPPER_GRADE_LABEL[g]}`, questions: () => arcadeCardQuestions(upperCards(s, g)) })));
   try {
-    const listed = await window.storage.list("upper:ai-lessons:");
-    for (const key of (listed && listed.keys) || []) {
-      const [, , subject, grade] = key.split(":");
-      const saved = await readJsonKey(key, {});
-      const cards = Object.entries(saved).flatMap(([topicId, l]) => (l.cards || []).map((c) => ({ ...c, topicId })));
-      if (cards.length >= 5 && UPPER_SUBJECTS[subject]) sources.push({ id: `upperai-${subject}-${grade}`, group: "Upper Grades", label: `${UPPER_SUBJECTS[subject].label} · ${SKILL_GRADE_LABEL[grade]}`, questions: () => arcadeCardQuestions(cards) });
-    }
-  } catch (e) {}
-  try {
     const listed = await window.storage.list("class-lessons:");
     for (const key of (listed && listed.keys) || []) {
       const [, subject, grade] = key.split(":");
@@ -8997,7 +8594,10 @@ function CombinedApp({ childName }) {
   function startLearningAt(placementSubject, level) {
     const lower = ["K", "1", "2", "3", "4", "5"].includes(level);
     const section = lower ? (placementSubject === "math" ? "math" : "reading") : "upper";
-    setStartAt({ subject: placementSubject === "math" ? "math" : "english", grade: level });
+    // Upper Grades only has real content through 5th for now; a higher
+    // placement result still lands somewhere real instead of a dead end.
+    const grade = lower ? level : "5";
+    setStartAt({ subject: placementSubject === "math" ? "math" : "english", grade });
     setSubject(section);
     setGlobalView(null);
   }
