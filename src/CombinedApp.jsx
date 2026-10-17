@@ -2,66 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Volume2, Star, CheckCircle2, XCircle, ArrowRight, Trophy, Pencil, ClipboardCheck,
   RotateCcw, Home, BookOpen, Calculator, Coffee, Wind, LayoutGrid, Sparkles, BookMarked, ArrowLeft,
-  ListOrdered, Flame, BarChart3, Clock, ArrowLeftRight, MessageCircle, Send, RefreshCw, Smile, FileText
+  ListOrdered, Flame, BarChart3, Clock, ArrowLeftRight, RefreshCw, Smile, FileText
 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { PLACEMENT_ITEMS, PLACEMENT_SUBJECTS, PLACEMENT_GRADES, PASS_SCORE, startingGrade, nextGrade, workingLevel, gradeIndex } from "./curriculum/placement";
-import { SKILL_GRADES, SKILL_GRADE_LABEL, skillsFor } from "./curriculum/skillMap";
-import { VIDEO_SEEDS, isTrustedChannel, parseYouTubeId, youTubeSearchUrl } from "./curriculum/videos";
+import { SKILL_GRADE_LABEL, skillsFor } from "./curriculum/skillMap";
 import { ARCADE_GAMES, ArcadeGame } from "./games/Arcade";
 
 
 // --- Shared sound effects (Web Audio, no external assets, no TTS dependency) ---
-// --- Live AI tutor helpers (shared by reading & math sections) ---
-// Goes through the "ai-tutor" Supabase Edge Function (supabase/functions/ai-tutor),
-// which holds the API key server-side and only answers signed-in parents.
-// Returns { text, error }: text is the reply (or null); error is a plain-words
-// reason for grown-ups when it failed. Pass a JSON schema to get JSON back.
-async function askClaudeDetailed(prompt, maxTokens, schema) {
-  try {
-    const { data, error } = await supabase.functions.invoke("ai-tutor", {
-      body: { prompt, maxTokens: maxTokens || 700, ...(schema ? { schema } : {}) },
-    });
-    if (error) {
-      let status = 0, serverError = "";
-      try {
-        if (error.context && typeof error.context.status === "number") {
-          status = error.context.status;
-          const payload = await error.context.json();
-          serverError = (payload && (payload.error || payload.message)) || "";
-        }
-      } catch (e) {}
-      return { text: null, error: describeAiError(status, serverError, error.name) };
-    }
-    const text = data && typeof data.text === "string" ? data.text.trim() : "";
-    if (text) return { text, error: null };
-    return { text: null, error: (data && data.error) || "The AI sent back an empty reply." };
-  } catch (e) {
-    return { text: null, error: "Couldn't reach the AI server — check the internet connection." };
-  }
-}
-async function askClaude(prompt, maxTokens) {
-  return (await askClaudeDetailed(prompt, maxTokens)).text;
-}
-// Turns an ai-tutor failure into something a grown-up can act on (see SETUP-AI.md).
-function describeAiError(status, serverError, errorName) {
-  if (errorName === "FunctionsFetchError" || (!status && !serverError)) return "Couldn't reach the AI server — check the internet connection.";
-  if (status === 404) return "The ai-tutor function isn't in Supabase yet (SETUP-AI.md, step 2).";
-  if (status === 401) return "Supabase turned the request away (401). In Supabase, open Edge Functions → ai-tutor → Details and turn off Verify JWT (see SETUP-AI.md).";
-  if (/ANTHROPIC_API_KEY/.test(serverError)) return "The AI key secret is missing or misspelled in Supabase (SETUP-AI.md, step 3).";
-  if (/key is invalid/i.test(serverError)) return "Anthropic didn't accept the API key — copy it again from console.anthropic.com (SETUP-AI.md, step 3).";
-  if (/credit|billing|balance/i.test(serverError)) return "The Anthropic account is out of credit or hit its spend limit — add credit at console.anthropic.com.";
-  return serverError ? `${serverError}${status ? ` (${status})` : ""}` : `The AI server returned an error (${status}).`;
-}
-function extractJson(text) {
-  if (!text) return null;
-  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-  try { return JSON.parse(cleaned); } catch (e) {}
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (match) { try { return JSON.parse(match[0]); } catch (e) {} }
-  return null;
-}
-
 function playChime(correct) {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -6016,7 +5965,7 @@ const WA_BACKUP_KEYS = [
   STORAGE_KEY, MISSED_KEY, ACTIVITY_KEY, LAST_ACTIVITY_KEY,
   MATH_STORAGE_KEY, MATH_MISSED_KEY, MATH_ACTIVITY_KEY, MATH_LAST_ACTIVITY_KEY,
   STREAK_KEY, SPURTS_KEY, ANALYTICS_KEY, SETTINGS_KEY, PLACEMENT_KEY,
-  "class-progress", "school-day", "video-choices", "homework", "rewards",
+  "daily-lesson-levels", "daily-lesson", "daily-lesson-rotation", "homework", "rewards",
 ];
 
 async function waExportBackup() {
@@ -6179,7 +6128,7 @@ function UpperSubjectHome({ onExit, onSwitchToGrades }) {
           <BookOpen color="#fff" size={28} />
         </div>
         <h1 className="text-2xl font-black" style={{ color: "#2B2250" }}>Upper Grades</h1>
-        <p className="text-sm mt-1" style={{ color: "#8B8499" }}>4th through 12th grade — pick a subject</p>
+        <p className="text-sm mt-1" style={{ color: "#8B8499" }}>4th through 5th grade — pick a subject</p>
       </div>
       <div className="space-y-3">
         {Object.entries(UPPER_SUBJECTS).map(([key, s]) => (
@@ -6245,7 +6194,7 @@ function UpperTopicList({ subject, grade, topics, cardCount, onOpenTopic, onExit
                 </div>
                 <div className="flex-1">
                   <div className="font-black text-sm" style={{ color: "#2B2250" }}>{t.title}</div>
-                  <div className="text-xs" style={{ color: "#8B8499" }}>{!t.cards ? "New lesson from Ms. Bright" : doneCount > 0 ? `${doneCount}/${t.cards.length} practiced` : `${t.cards.length} practice cards`}</div>
+                  <div className="text-xs" style={{ color: "#8B8499" }}>{doneCount > 0 ? `${doneCount}/${t.cards.length} practiced` : `${t.cards.length} practice cards`}</div>
                 </div>
                 <ArrowRight size={16} style={{ color: "#C9C2D6" }} />
               </button>
@@ -6947,30 +6896,19 @@ function UpperSection({ onSwitchSubject, startAt }) {
   );
 }
 
-// ===================== SCHOOL DAY =====================
-// A daily schedule of classes (Reading & Writing, Math, Science, Social
-// Studies), each a full lesson from Ms. Bright at the child's working level.
-//
-// Every lesson follows the "gradual release" model used by effective
-// teachers: hook and key words, I do (explain + worked example), Watch
-// (an optional short video), We do (guided practice with hints), You do
-// (independent practice with feedback), then an exit ticket. 4 of 5 right
-// on your own counts as mastered; otherwise the skill comes back next time.
-
-const CLASS_LESSONS_KEY = (subject, grade) => `class-lessons:${subject}:${grade}`;
-const CLASS_PROGRESS_KEY = "class-progress";
-const SCHOOL_DAY_KEY = "school-day";
-const VIDEO_CHOICES_KEY = "video-choices";
-const CLASS_ACTIVITY_KEY = "class-activity";
-const CLASS_MASTERY = 0.8;
-
-const CLASS_PERIODS = [
-  { subject: "english", label: "Reading & Writing", color: "#B5643A" },
-  { subject: "math", label: "Math", color: "#3D6E96" },
-  { subject: "science", label: "Science", color: "#4F8A6B" },
-  { subject: "social", label: "Social Studies", color: "#8E7CC3" },
-];
-const CLASS_SUBJECT_LABEL = { english: "Reading & Writing", math: "Math", science: "Science", social: "Social Studies" };
+// ===================== DAILY LESSON =====================
+// A free daily lesson built entirely from the app's own Reading and Math
+// content (word lists, fact lists, stories, word problems) - no AI, no
+// network call beyond saving progress. Matched to each child's current
+// grade and progress: words/facts not yet mastered are prioritized, and
+// stories/word problems rotate through the full set day by day.
+const DAILY_LEVELS_KEY = "daily-lesson-levels"; // { reading: "2", math: "1" }
+const DAILY_LESSON_KEY = "daily-lesson"; // today's picks + done state
+const DAILY_ROTATION_KEY = "daily-lesson-rotation"; // which story/word problem is next, persists across days
+const DAILY_WORDS_PER_DAY = 5;
+const DAILY_FACTS_PER_DAY = 5;
+const DAILY_SUBJECT_COLOR = { reading: "#B5643A", math: "#1D7A4C" };
+const DAILY_SUBJECT_LABEL = { reading: "Reading", math: "Math" };
 
 async function readJsonKey(key, fallback) {
   try {
@@ -6983,539 +6921,6 @@ async function writeJsonKey(key, value) {
   try { await window.storage.set(key, JSON.stringify(value)); } catch (e) {}
 }
 
-// Turn one AI practice item into { q, choices, answer (index), hint, why }.
-// The answer usually matches a choice exactly; also accept small differences
-// (case, punctuation) or a letter/number like "B" or "2".
-function normalizeClassItem(item) {
-  if (!item || typeof item.q !== "string" || !Array.isArray(item.choices)) return null;
-  const choices = item.choices.filter((c) => typeof c === "string" && c.trim()).map((c) => c.trim());
-  if (choices.length < 2 || new Set(choices).size !== choices.length) return null;
-  const loose = (t) => String(t).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const raw = String(item.answer == null ? "" : item.answer).trim();
-  let answer = choices.indexOf(raw);
-  if (answer < 0) answer = choices.findIndex((c) => loose(c) === loose(raw));
-  if (answer < 0 && /^[A-Da-d][).]?$/.test(raw)) answer = raw.toUpperCase().charCodeAt(0) - 65;
-  if (answer < 0 && /^[1-4]$/.test(raw)) answer = Number(raw) - 1;
-  if (answer < 0 || answer >= choices.length) return null;
-  return { q: item.q.trim(), choices, answer, hint: typeof item.hint === "string" ? item.hint : "", why: typeof item.why === "string" ? item.why : "" };
-}
-
-// The exact JSON shape Ms. Bright must return for a class lesson.
-const CLASS_QUESTION_SCHEMA = {
-  type: "object", additionalProperties: false, required: ["q", "choices", "answer", "hint", "why"],
-  properties: { q: { type: "string" }, choices: { type: "array", items: { type: "string" } }, answer: { type: "string" }, hint: { type: "string" }, why: { type: "string" } },
-};
-const CLASS_LESSON_SCHEMA = {
-  type: "object", additionalProperties: false,
-  required: ["hook", "vocab", "teach", "example", "weDo", "youDo", "homework"],
-  properties: {
-    hook: { type: "string" },
-    vocab: { type: "array", items: { type: "object", additionalProperties: false, required: ["word", "meaning"], properties: { word: { type: "string" }, meaning: { type: "string" } } } },
-    teach: { type: "string" },
-    example: { type: "object", additionalProperties: false, required: ["problem", "steps", "answer"], properties: { problem: { type: "string" }, steps: { type: "array", items: { type: "string" } }, answer: { type: "string" } } },
-    weDo: { type: "array", items: CLASS_QUESTION_SCHEMA },
-    youDo: { type: "array", items: CLASS_QUESTION_SCHEMA },
-    homework: { type: "object", additionalProperties: false, required: ["title", "materials", "steps"], properties: { title: { type: "string" }, materials: { type: "array", items: { type: "string" } }, steps: { type: "array", items: { type: "string" } } } },
-  },
-};
-
-async function generateClassLesson(subject, grade, skill) {
-  const prompt = `Write a complete lesson for a ${SKILL_GRADE_LABEL[grade]} student in ${CLASS_SUBJECT_LABEL[subject]} on "${skill.title}" (${skill.focus}). The student may be behind grade level, so build up from the basics, use short sentences and concrete everyday examples, and explain any new word.
-
-Respond ONLY with JSON in exactly this shape:
-{"hook": "...", "vocab": [{"word": "...", "meaning": "..."}], "teach": "...", "example": {"problem": "...", "steps": ["..."], "answer": "..."}, "weDo": [{"q": "...", "choices": ["...", "...", "..."], "answer": "...", "hint": "...", "why": "..."}], "youDo": [{"q": "...", "choices": ["...", "...", "..."], "answer": "...", "why": "..."}], "homework": {"title": "...", "materials": ["..."], "steps": ["..."]}}
-
-- "hook": 1-2 friendly sentences connecting the skill to everyday life.
-- "vocab": 2-4 key words with kid-friendly meanings.
-- "teach": 100-180 words explaining the idea clearly. Separate paragraphs with a blank line.
-- "example": one worked example solved in 2-5 short steps.
-- "weDo": exactly 2 guided questions, each with a "hint" that nudges without giving the answer away.
-- "youDo": exactly 5 questions on their own, a mix of easier and harder.
-- Every question has 3 or 4 different choices, exactly one correct; "answer" must match the correct choice word for word; "why" explains the right answer in 1-2 sentences.
-- "homework": a hands-on activity away from screens (10-20 minutes) using common household items, with 3-6 clear steps.`;
-  // Returns { lesson } or { error } (a reason grown-ups can act on). Tries twice.
-  let lastError = "";
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const { text, error } = await askClaudeDetailed(prompt, 4000, CLASS_LESSON_SCHEMA);
-    if (error) {
-      lastError = error;
-      // Setup problems won't fix themselves on a retry.
-      if (!/cut off|empty reply|busy/i.test(error)) break;
-      continue;
-    }
-    const lesson = buildClassLesson(extractJson(text));
-    if (lesson) return { lesson };
-    lastError = "The lesson came back incomplete.";
-  }
-  return { error: lastError || "The lesson came back incomplete." };
-}
-
-function buildClassLesson(parsed) {
-  if (!parsed || typeof parsed.teach !== "string" || parsed.teach.trim().length < 40) return null;
-  const weDo = (parsed.weDo || []).map(normalizeClassItem).filter(Boolean);
-  const youDo = (parsed.youDo || []).map(normalizeClassItem).filter(Boolean);
-  if (youDo.length < 4) return null;
-  const ex = parsed.example && typeof parsed.example.problem === "string" ? parsed.example : null;
-  const hw = parsed.homework && typeof parsed.homework.title === "string" && Array.isArray(parsed.homework.steps) ? parsed.homework : null;
-  return {
-    hook: typeof parsed.hook === "string" ? parsed.hook : "",
-    vocab: (parsed.vocab || []).filter((v) => v && typeof v.word === "string" && typeof v.meaning === "string").slice(0, 4),
-    teach: parsed.teach.trim(),
-    example: ex ? { problem: ex.problem, steps: (ex.steps || []).filter((x) => typeof x === "string"), answer: typeof ex.answer === "string" ? ex.answer : "" } : null,
-    weDo,
-    youDo,
-    homework: hw ? { title: hw.title, materials: (hw.materials || []).filter((x) => typeof x === "string"), steps: hw.steps.filter((x) => typeof x === "string") } : null,
-    generatedAt: todayStr(),
-  };
-}
-
-// --- Video player: YouTube's official embed, privacy-enhanced domain ---
-let youTubeApiPromise = null;
-function loadYouTubeApi() {
-  if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
-  if (!youTubeApiPromise) {
-    youTubeApiPromise = new Promise((resolve) => {
-      const previous = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => { if (previous) previous(); resolve(window.YT); };
-      const script = document.createElement("script");
-      script.src = "https://www.youtube.com/iframe_api";
-      script.onerror = () => { youTubeApiPromise = null; resolve(null); };
-      document.head.appendChild(script);
-    });
-  }
-  return youTubeApiPromise;
-}
-
-// Plays a video only if it exists, can be embedded, and is from a trusted
-// channel (or a grown-up chose it). Otherwise reports "skip".
-function LessonVideo({ videoId, parentApproved, onStatus }) {
-  const hostRef = useRef(null);
-  const [status, setStatus] = useState("loading"); // loading | ready | skip
-
-  useEffect(() => {
-    let live = true;
-    let player = null;
-    const giveUp = setTimeout(() => { if (live) { setStatus("skip"); onStatus && onStatus("skip"); } }, 12000);
-    loadYouTubeApi().then((YT) => {
-      if (!live) return;
-      if (!YT || !hostRef.current) { clearTimeout(giveUp); setStatus("skip"); onStatus && onStatus("skip"); return; }
-      player = new YT.Player(hostRef.current, {
-        videoId,
-        host: "https://www.youtube-nocookie.com",
-        playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-        events: {
-          onReady: (e) => {
-            if (!live) return;
-            clearTimeout(giveUp);
-            const data = (e.target.getVideoData && e.target.getVideoData()) || {};
-            const ok = parentApproved || isTrustedChannel(data.author);
-            setStatus(ok ? "ready" : "skip");
-            onStatus && onStatus(ok ? "ready" : "skip", data);
-          },
-          onError: () => { if (!live) return; clearTimeout(giveUp); setStatus("skip"); onStatus && onStatus("skip"); },
-        },
-      });
-    });
-    return () => { live = false; clearTimeout(giveUp); try { player && player.destroy(); } catch (e) {} };
-  }, [videoId, parentApproved]); // eslint-disable-line
-
-  return (
-    <div className="w-full rounded-2xl overflow-hidden relative" style={{ aspectRatio: "16 / 9", background: "#000", display: status === "skip" ? "none" : "block" }}>
-      {/* The host div is where YouTube's own player/iframe gets created, which
-          happens right away — before onReady runs the trusted-channel check.
-          Keeping it hidden (not just covered) until the check has passed
-          means a kid can't tap an unverified video's native play button in
-          the moment before it's approved. */}
-      <div ref={hostRef} style={{ width: "100%", height: "100%", visibility: status === "ready" ? "visible" : "hidden" }} />
-      {status === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center" style={{ background: "#000" }}>
-          <div className="text-xs font-bold" style={{ color: "#8B8499" }}>Loading video…</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Grown-up controls for a lesson's video: paste a link, hide it, or reset.
-function VideoChooser({ skill, grade, subject, current, onSave, onClose }) {
-  const [link, setLink] = useState("");
-  const [error, setError] = useState("");
-  const query = `${skill.title} ${SKILL_GRADE_LABEL[grade]} ${subject === "math" ? "Khan Academy" : "lesson for kids"}`;
-  function save() {
-    const id = parseYouTubeId(link);
-    if (!id) { setError("That doesn't look like a YouTube link."); return; }
-    onSave({ videoId: id, parentApproved: true });
-  }
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0" style={{ background: "rgba(43,34,80,0.5)" }} onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl p-5" style={{ background: "#fff" }} onClick={(e) => e.stopPropagation()}>
-        <div className="font-black text-lg mb-1" style={{ color: "#2B2250" }}>Lesson video (grown-ups)</div>
-        <p className="text-xs mb-3" style={{ color: "#8B8499" }}>
-          Videos from trusted teaching channels play automatically. Paste a YouTube link to use a video you've chosen, or hide the video for this lesson.
-        </p>
-        <a href={youTubeSearchUrl(query)} target="_blank" rel="noopener noreferrer" className="block text-xs font-bold underline mb-3" style={{ color: "#3D6E96" }}>
-          Search YouTube for “{skill.title}” ↗
-        </a>
-        <input value={link} onChange={(e) => { setLink(e.target.value); setError(""); }} placeholder="Paste a YouTube link"
-          className="w-full text-sm px-3 py-2.5 rounded-xl outline-none mb-2" style={{ border: "2px solid #EEE6D6", color: "#2B2250" }} />
-        {error && <div className="text-xs font-bold mb-2" style={{ color: "#D9432F" }}>{error}</div>}
-        <button onClick={save} className="kbtn w-full py-2.5 rounded-xl font-black text-white mb-2" style={{ background: "#2B2250" }}>Use This Video</button>
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <button onClick={() => onSave({ hidden: true })} className="kbtn py-2.5 rounded-xl font-black text-xs" style={{ background: "#EEE6D6", color: "#2B2250" }}>Hide Video</button>
-          <button onClick={() => onSave(null)} disabled={!current} className="kbtn py-2.5 rounded-xl font-black text-xs" style={{ background: "#EEE6D6", color: "#2B2250", opacity: current ? 1 : 0.4 }}>Use Suggested</button>
-        </div>
-        <button onClick={onClose} className="kbtn w-full py-2 rounded-xl font-bold text-sm" style={{ color: "#8B8499" }}>Close</button>
-      </div>
-    </div>
-  );
-}
-
-function AskMsBright({ subject, grade, skill, lessonText, color }) {
-  const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  async function send() {
-    const text = input.trim();
-    if (!text || loading) return;
-    const next = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setInput("");
-    setLoading(true);
-    const history = next.map((m) => `${m.role === "user" ? "Student" : "Ms. Bright"}: ${m.content}`).join("\n");
-    const prompt = `You are helping a ${SKILL_GRADE_LABEL[grade]} student during a ${CLASS_SUBJECT_LABEL[subject]} lesson on "${skill.title}".\n\nLesson: ${lessonText}\n\nConversation so far:\n${history}\n\nAnswer the student's latest message in 2-4 short, encouraging sentences. If it's off-topic, gently bring them back to the lesson.`;
-    const reply = await askClaude(prompt, 400);
-    setLoading(false);
-    setMessages((m) => [...m, { role: "assistant", content: reply || "Sorry, I couldn't answer just now — try asking again." }]);
-    if (reply) speak(reply, 0.9);
-  }
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className="kbtn w-full rounded-2xl p-3 mb-4 flex items-center gap-3 text-left" style={{ background: "#2B2250" }}>
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}><MessageCircle size={16} color="#fff" /></div>
-        <div className="flex-1"><div className="text-white font-black text-sm">Ask Ms. Bright</div><div className="text-xs" style={{ color: "#C9C2D6" }}>Stuck? Ask any question about this lesson</div></div>
-      </button>
-    );
-  }
-  return (
-    <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: "#fff", border: `2px solid ${color}` }}>
-      <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: `${color}14` }}>
-        <div className="font-black text-xs flex items-center gap-1.5" style={{ color }}><MessageCircle size={14} /> Ask Ms. Bright</div>
-        <button onClick={() => setOpen(false)} className="text-xs font-bold" style={{ color: "#8B8499" }}>Hide</button>
-      </div>
-      <div className="px-4 py-3 space-y-2.5 overflow-y-auto" style={{ maxHeight: 220 }}>
-        {messages.length === 0 && <div className="text-xs" style={{ color: "#8B8499" }}>No question is too small!</div>}
-        {messages.map((m, i) => (
-          <div key={i} className={`text-sm rounded-xl px-3 py-2 max-w-[85%] ${m.role === "user" ? "ml-auto" : ""}`} style={{ background: m.role === "user" ? color : "#F5F5F0", color: m.role === "user" ? "#fff" : "#2B2250" }}>{m.content}</div>
-        ))}
-        {loading && <div className="text-xs" style={{ color: "#8B8499" }}>Thinking...</div>}
-      </div>
-      <div className="px-3 py-2.5 flex gap-2" style={{ borderTop: "1px solid #EEE6D6" }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Ask a question..."
-          className="flex-1 text-sm px-3 py-2 rounded-lg outline-none" style={{ border: "1.5px solid #EEE6D6", color: "#2B2250" }} />
-        <button onClick={send} disabled={!input.trim() || loading} className="kbtn w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: color, opacity: input.trim() && !loading ? 1 : 0.5 }}><Send size={14} color="#fff" /></button>
-      </div>
-    </div>
-  );
-}
-
-// One practice question with choices, hint and explanation.
-// mode "guided": retry until right, hint available. mode "solo": one try, then feedback.
-function ClassQuestion({ item, color, mode, autoRead, onDone }) {
-  const [picked, setPicked] = useState(null);
-  const [locked, setLocked] = useState(false);
-  const [showHint, setShowHint] = useState(false);
-  const [firstTryCorrect, setFirstTryCorrect] = useState(null);
-
-  function read() { speakSequence([item.q, ...item.choices.map((c, i) => `Choice ${i + 1}: ${c}`)], 0.85, 350); }
-  useEffect(() => { if (autoRead) read(); }, [item.q]); // eslint-disable-line
-
-  function choose(i) {
-    if (locked) return;
-    const correct = i === item.answer;
-    setPicked(i);
-    if (firstTryCorrect === null) setFirstTryCorrect(correct);
-    playChime(correct);
-    if (correct || mode === "solo") {
-      setLocked(true);
-      speak(correct ? `That's right! ${item.why}` : `Not quite. ${item.why}`, 0.9);
-    }
-  }
-
-  const right = locked && picked === item.answer;
-  return (
-    <div className="pop">
-      <div className="rounded-2xl p-5 mb-3" style={{ background: "#fff", border: `2px solid ${color}` }}>
-        <div className="flex items-start gap-2">
-          <div className="font-black text-base flex-1" style={{ color: "#2B2250" }}>{item.q}</div>
-          <button onClick={read} className="kbtn w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: `${color}22`, color }}><Volume2 size={16} /></button>
-        </div>
-      </div>
-      <div className="space-y-2 mb-3">
-        {item.choices.map((c, i) => {
-          let bg = "#fff", border = "#EEE6D6";
-          if (locked && i === item.answer) { bg = "#6FAE8B22"; border = "#6FAE8B"; }
-          else if (picked === i && i !== item.answer) { bg = "#D9432F14"; border = "#D9432F"; }
-          return (
-            <button key={i} onClick={() => choose(i)} className="kbtn w-full text-left px-4 py-3 rounded-xl font-bold text-sm" style={{ background: bg, border: `2px solid ${border}`, color: "#2B2250" }}>{c}</button>
-          );
-        })}
-      </div>
-      {!locked && picked !== null && <div className="text-sm font-bold mb-3" style={{ color: "#D98551" }}>Not quite — try another one!</div>}
-      {mode === "guided" && !locked && item.hint && (
-        showHint
-          ? <div className="text-sm p-3 rounded-xl mb-3" style={{ background: `${color}14`, color: "#2B2250" }}>💡 {item.hint}</div>
-          : <button onClick={() => { setShowHint(true); speak(item.hint, 0.9); }} className="kbtn text-xs font-black px-3 py-1.5 rounded-full mb-3" style={{ background: `${color}22`, color, border: `1px solid ${color}` }}>💡 Need a hint?</button>
-      )}
-      {locked && (
-        <>
-          <div className="text-sm p-3 rounded-xl mb-3" style={{ background: right ? "#6FAE8B1A" : "#D985511A", color: "#2B2250" }}>
-            <b>{right ? "That's right! " : "Here's why: "}</b>{item.why}
-          </div>
-          <button onClick={() => onDone(firstTryCorrect)} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2" style={{ background: color }}>Next <ArrowRight size={16} /></button>
-        </>
-      )}
-    </div>
-  );
-}
-
-function ClassLesson({ subject, grade, skill, color, onExit, onFinished }) {
-  const earlyGrades = ["K", "1", "2"].includes(grade);
-  const [lesson, setLesson] = useState(null);
-  const [state, setState] = useState("loading"); // loading | error | ready
-  const [errorDetail, setErrorDetail] = useState("");
-  const [attempt, setAttempt] = useState(0);
-  const [step, setStep] = useState("learn"); // learn | watch | together | solo | done
-  const [exampleShown, setExampleShown] = useState(0);
-  const [qIdx, setQIdx] = useState(0);
-  const [soloCorrect, setSoloCorrect] = useState(0);
-  const [videoChoice, setVideoChoice] = useState(undefined); // undefined = loading
-  const [videoOk, setVideoOk] = useState(true);
-  const [showVideoChooser, setShowVideoChooser] = useState(false);
-
-  // Load the saved lesson, or have Ms. Bright write it (once).
-  useEffect(() => {
-    let live = true;
-    setState("loading");
-    (async () => {
-      const key = CLASS_LESSONS_KEY(subject, grade);
-      const saved = await readJsonKey(key, {});
-      if (saved[skill.id]) { if (live) { setLesson(saved[skill.id]); setState("ready"); } return; }
-      const { lesson: written, error } = await generateClassLesson(subject, grade, skill);
-      if (!live) return;
-      if (!written) { setErrorDetail(error || ""); setState("error"); return; }
-      const latest = await readJsonKey(key, {});
-      await writeJsonKey(key, { ...latest, [skill.id]: written });
-      setLesson(written);
-      setState("ready");
-    })();
-    return () => { live = false; };
-  }, [skill.id, attempt]); // eslint-disable-line
-
-  useEffect(() => {
-    readJsonKey(VIDEO_CHOICES_KEY, {}).then((all) => setVideoChoice(all[skill.id] || null));
-  }, [skill.id]);
-
-  const video = videoChoice === undefined ? null
-    : videoChoice && videoChoice.hidden ? null
-    : videoChoice && videoChoice.videoId ? videoChoice
-    : VIDEO_SEEDS[skill.id] ? { videoId: VIDEO_SEEDS[skill.id], parentApproved: false } : null;
-
-  async function saveVideoChoice(choice) {
-    const all = await readJsonKey(VIDEO_CHOICES_KEY, {});
-    if (choice) all[skill.id] = choice; else delete all[skill.id];
-    await writeJsonKey(VIDEO_CHOICES_KEY, all);
-    setVideoChoice(choice);
-    setVideoOk(true);
-    setShowVideoChooser(false);
-    if (choice && choice.hidden && step === "watch") setStep("together");
-  }
-
-  const steps = ["learn", ...(video && videoOk ? ["watch"] : []), "together", "solo", "done"];
-  const STEP_LABEL = { learn: "Learn", watch: "Watch", together: "Together", solo: "On Your Own", done: "Done" };
-
-  function goNext() { setQIdx(0); setStep(steps[steps.indexOf(step) + 1]); }
-
-  const shell = (children) => (
-    <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
-      <div className="max-w-md mx-auto pb-10">
-        <TopBar title={CLASS_SUBJECT_LABEL[subject]} color={color} onExit={onExit} />
-        <div className="px-5 pt-5">{children}</div>
-      </div>
-      {showVideoChooser && <VideoChooser skill={skill} grade={grade} subject={subject} current={videoChoice} onSave={saveVideoChoice} onClose={() => setShowVideoChooser(false)} />}
-    </div>
-  );
-
-  if (state !== "ready" || !lesson) {
-    return shell(
-      state === "error" ? (
-        <div className="rounded-2xl p-5 text-center mt-6" style={{ background: "#fff", border: "2px solid #D98551" }}>
-          <div className="text-sm font-bold mb-2" style={{ color: "#D98551" }}>Ms. Bright couldn't get this lesson ready right now.</div>
-          <div className="text-xs mb-3" style={{ color: "#8B8499" }}>Check your connection and try again. If it keeps happening, a grown-up may need to finish the AI setup.</div>
-          {errorDetail && <div className="text-xs text-left p-2.5 rounded-lg mb-4" style={{ background: "#F5F5F0", color: "#5B6B7A" }}><b>For grown-ups:</b> {errorDetail}</div>}
-          <button onClick={() => setAttempt((n) => n + 1)} className="kbtn px-4 py-2 rounded-xl font-black text-white" style={{ background: color }}>Try Again</button>
-        </div>
-      ) : (
-        <div className="rounded-2xl p-8 text-center mt-6" style={{ background: "#fff", border: `2px solid ${color}` }}>
-          <div className="text-4xl mb-3">✏️</div>
-          <div className="text-sm font-bold" style={{ color: "#8B8499" }}>Ms. Bright is getting today's lesson ready: {skill.title}...</div>
-        </div>
-      )
-    );
-  }
-
-  const header = (
-    <>
-      <div className="flex gap-1 mb-3">
-        {steps.map((st) => (
-          <div key={st} className="flex-1 text-center">
-            <div className="h-1.5 rounded-full mb-1" style={{ background: steps.indexOf(st) <= steps.indexOf(step) ? color : "#EEE6D6" }} />
-            <div className="text-[9px] font-black" style={{ color: st === step ? color : "#C9C2D6" }}>{STEP_LABEL[st]}</div>
-          </div>
-        ))}
-      </div>
-      <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color }}>{SKILL_GRADE_LABEL[grade]}</div>
-      <h1 className="text-xl font-black mb-4" style={{ color: "#2B2250" }}>{skill.title}</h1>
-    </>
-  );
-
-  if (step === "learn") {
-    const lessonSpeech = [lesson.hook, lesson.teach].filter(Boolean).join(" ");
-    return shell(
-      <>
-        {header}
-        {lesson.hook && <p className="text-base font-bold mb-4" style={{ color: "#2B2250" }}>👋 {lesson.hook}</p>}
-        {lesson.vocab.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {lesson.vocab.map((v) => (
-              <button key={v.word} onClick={() => speak(`${v.word}. ${v.meaning}`, 0.9)} className="kbtn text-left rounded-xl p-3" style={{ background: `${color}10`, border: `1.5px solid ${color}55` }}>
-                <div className="font-black text-sm" style={{ color: "#2B2250" }}>{v.word}</div>
-                <div className="text-xs" style={{ color: "#5B6B7A" }}>{v.meaning}</div>
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="rounded-2xl p-4 mb-4" style={{ background: "#fff", border: `2px solid ${color}` }}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="font-black text-xs uppercase tracking-widest" style={{ color }}>Ms. Bright explains</div>
-            <button onClick={() => speak(lessonSpeech, 0.9)} className="kbtn w-8 h-8 rounded-full flex items-center justify-center" style={{ background: `${color}22`, color }}><Volume2 size={14} /></button>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#2B2250" }}>{lesson.teach}</p>
-        </div>
-        {lesson.example && (
-          <div className="rounded-2xl p-4 mb-4" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
-            <div className="font-black text-xs uppercase tracking-widest mb-2" style={{ color }}>Watch me solve one</div>
-            <div className="font-bold text-sm mb-3" style={{ color: "#2B2250" }}>{lesson.example.problem}</div>
-            <ol className="space-y-1.5 mb-2">
-              {lesson.example.steps.slice(0, exampleShown).map((st, i) => (
-                <li key={i} className="text-sm pop" style={{ color: "#2B2250" }}><b style={{ color }}>Step {i + 1}.</b> {st}</li>
-              ))}
-            </ol>
-            {exampleShown < lesson.example.steps.length ? (
-              <button onClick={() => { speak(lesson.example.steps[exampleShown], 0.9); setExampleShown(exampleShown + 1); }} className="kbtn text-xs font-black px-3 py-1.5 rounded-full" style={{ background: `${color}22`, color }}>
-                Show {exampleShown === 0 ? "the first" : "the next"} step
-              </button>
-            ) : (
-              lesson.example.answer && <div className="text-sm font-black pop" style={{ color: "#4F8A6B" }}>✓ Answer: {lesson.example.answer}</div>
-            )}
-          </div>
-        )}
-        <AskMsBright subject={subject} grade={grade} skill={skill} lessonText={lesson.teach} color={color} />
-        <button onClick={goNext} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2" style={{ background: color }}>
-          {steps[1] === "watch" ? "Watch a Video" : "Let's Practice Together"} <ArrowRight size={16} />
-        </button>
-        <button onClick={() => setShowVideoChooser(true)} className="w-full text-center text-[11px] font-bold mt-3 underline" style={{ color: "#C9C2D6" }}>Grown-ups: lesson video</button>
-      </>
-    );
-  }
-
-  if (step === "watch") {
-    return shell(
-      <>
-        {header}
-        {video && <LessonVideo videoId={video.videoId} parentApproved={video.parentApproved} onStatus={(st) => { if (st === "skip") { setVideoOk(false); setStep("together"); } }} />}
-        <button onClick={goNext} className="kbtn w-full py-3 rounded-xl font-black text-white flex items-center justify-center gap-2 mt-4" style={{ background: color }}>
-          Let's Practice Together <ArrowRight size={16} />
-        </button>
-        <button onClick={() => setShowVideoChooser(true)} className="w-full text-center text-[11px] font-bold mt-3 underline" style={{ color: "#C9C2D6" }}>Grown-ups: change or hide this video</button>
-      </>
-    );
-  }
-
-  if (step === "together") {
-    if (lesson.weDo.length === 0) { setTimeout(goNext, 0); return null; }
-    const item = lesson.weDo[qIdx];
-    return shell(
-      <>
-        {header}
-        <div className="text-xs font-bold mb-3" style={{ color: "#8B8499" }}>Let's do this one together ({qIdx + 1} of {lesson.weDo.length})</div>
-        <ClassQuestion key={`w${qIdx}`} item={item} color={color} mode="guided" autoRead={earlyGrades}
-          onDone={() => { if (qIdx + 1 < lesson.weDo.length) setQIdx(qIdx + 1); else goNext(); }} />
-      </>
-    );
-  }
-
-  if (step === "solo") {
-    const item = lesson.youDo[qIdx];
-    return shell(
-      <>
-        {header}
-        <div className="text-xs font-bold mb-3" style={{ color: "#8B8499" }}>Your turn! Question {qIdx + 1} of {lesson.youDo.length}</div>
-        <ClassQuestion key={`y${qIdx}`} item={item} color={color} mode="solo" autoRead={earlyGrades}
-          onDone={(correct) => {
-            recordActivity(CLASS_ACTIVITY_KEY, !!correct);
-            if (!correct) logMiss(`class-${subject}`, grade, skill.title);
-            const total = soloCorrect + (correct ? 1 : 0);
-            setSoloCorrect(total);
-            if (qIdx + 1 < lesson.youDo.length) { setQIdx(qIdx + 1); return; }
-            const mastered = total / lesson.youDo.length >= CLASS_MASTERY;
-            onFinished({ score: total, total: lesson.youDo.length, mastered, homework: lesson.homework });
-            setStep("done");
-          }} />
-      </>
-    );
-  }
-
-  const mastered = soloCorrect / lesson.youDo.length >= CLASS_MASTERY;
-  return shell(
-    <>
-      {header}
-      <div className="rounded-3xl p-6 mb-4 text-center pop" style={{ background: "#fff", border: `3px solid ${color}` }}>
-        <Trophy size={44} style={{ color: "#E8B84B" }} className="mx-auto mb-2" />
-        <div className="text-2xl font-black mb-1" style={{ color: "#2B2250" }}>{soloCorrect} / {lesson.youDo.length} on your own</div>
-        <p className="text-sm" style={{ color: "#8B8499" }}>
-          {mastered ? "You've mastered this skill! Ms. Bright is proud of you." : "Good effort! We'll practice this again next time — that's how learning sticks."}
-        </p>
-      </div>
-      {lesson.homework && (
-        <div className="rounded-2xl p-4 mb-4" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
-          <div className="font-black text-xs uppercase tracking-widest mb-1" style={{ color }}>✋ Homework (away from the screen) — saved to your Homework list</div>
-          <div className="font-black text-sm mb-2" style={{ color: "#2B2250" }}>{lesson.homework.title}</div>
-          {lesson.homework.materials.length > 0 && <div className="text-xs mb-2" style={{ color: "#5B6B7A" }}><b>You'll need:</b> {lesson.homework.materials.join(", ")}</div>}
-          <ol className="text-xs space-y-1 list-decimal pl-4" style={{ color: "#2B2250" }}>
-            {lesson.homework.steps.map((st, i) => <li key={i}>{st}</li>)}
-          </ol>
-        </div>
-      )}
-      <button onClick={onExit} className="kbtn w-full py-3 rounded-xl font-black text-white mb-2" style={{ background: color }}>Back to School Day</button>
-      {!mastered && (
-        <button onClick={() => { setSoloCorrect(0); setQIdx(0); setStep("together"); }} className="kbtn w-full py-3 rounded-xl font-black" style={{ background: "#EEE6D6", color: "#2B2250" }}>Practice Again Now</button>
-      )}
-    </>
-  );
-}
-
-// The next skill to teach in a subject: the first not-yet-mastered skill at
-// their level, moving up a grade once every skill at this grade is mastered.
-function nextClassSkill(subject, level, mastered) {
-  const gi = SKILL_GRADES.indexOf(level);
-  for (let i = Math.max(0, gi); i < SKILL_GRADES.length; i++) {
-    const g = SKILL_GRADES[i];
-    const skill = skillsFor(subject, g).find((sk) => !mastered[sk.id]);
-    if (skill) return { grade: g, skill };
-  }
-  return null;
-}
 
 // ===================== HOMEWORK =====================
 // Each finished class assigns that lesson's hands-on, off-screen activity
@@ -7528,15 +6933,42 @@ const HOMEWORK_FEELINGS = [
   { id: "hard", emoji: "😕", label: "Tricky" },
 ];
 const HOMEWORK_STICKERS = ["🌟", "🚀", "🦄", "🐢", "🌈", "🦖", "🎨", "🏆", "🐙", "🍀", "🎈", "🦋"];
+const HOMEWORK_CELEBRATIONS = [
+  "That's awesome! You worked hard on that.",
+  "Great job sharing what you did — that really shows you were paying attention!",
+  "Nice work! Telling someone about it helps it stick in your memory.",
+  "You should be proud of that — way to finish strong!",
+  "Love it! That's exactly the kind of thinking that helps you learn.",
+];
 
-// Adds the lesson's homework unless that subject already has open homework.
-function assignHomework(list, { subject, grade, skill, homework }) {
-  if (!homework) return list;
+// Simple, varied, screen-free homework activities. {word}/{fact} are filled
+// in with something from today's actual lesson, so it's never generic.
+const HOMEWORK_TEMPLATES = [
+  { subject: "reading", title: "Word Hunt", materials: [], steps: ["Look around your home for 3 things.", 'Say today\'s word, "{word}", out loud 3 times.', 'Try to use "{word}" in a sentence about one of the things you found.'] },
+  { subject: "reading", title: "Spell It Big", materials: ["paper", "crayons or markers"], steps: ['Write today\'s word "{word}" as big as you can.', "Trace over each letter with your finger, saying the letter names.", "Draw a picture that shows what the word means."] },
+  { subject: "reading", title: "Word Detective", materials: [], steps: ['Find today\'s word, "{word}", somewhere in a book, sign, or label.', "Show a grown-up where you found it.", "Read the whole sentence it was in out loud."] },
+  { subject: "reading", title: "Story Retell", materials: [], steps: ["Tell a grown-up about the story you just read, in your own words.", "Say what happened at the beginning, middle, and end.", "Tell them your favorite part."] },
+  { subject: "math", title: "Math in the Kitchen", materials: ["small objects, like cereal, coins, or toys"], steps: ["Count out a group of 10 small objects.", "Practice today's fact: {fact}.", "Show a grown-up how you figured it out."] },
+  { subject: "math", title: "Number Hunt", materials: [], steps: ["Find 3 numbers somewhere around your home (clocks, labels, mail).", "Read each number out loud.", "Pick your favorite one and say one thing you know about it."] },
+  { subject: "math", title: "Fact Flashcards", materials: ["paper", "scissors"], steps: ["Cut paper into 5 small cards.", "Write one of today's math facts on each card.", "Shuffle them and quiz a grown-up — do they get them right?"] },
+  { subject: "math", title: "Draw the Math", materials: ["paper", "crayons or markers"], steps: ["Draw a picture that shows today's fact: {fact}.", "Use dots, shapes, or objects to show the numbers.", "Explain your drawing to a grown-up."] },
+];
+function pickHomeworkTemplate(subject, word, factObj) {
+  const options = HOMEWORK_TEMPLATES.filter((t) => t.subject === subject);
+  const t = options[Math.floor(Math.random() * options.length)];
+  const factText = factObj ? `${factDisplay(factObj)} = ${factObj.answer}` : "";
+  const fill = (s) => s.replace(/\{word\}/g, word || "").replace(/\{fact\}/g, factText);
+  return { title: t.title, materials: t.materials, steps: t.steps.map(fill) };
+}
+
+// Adds today's homework for a subject unless that subject already has one open.
+function assignHomework(list, { subject, grade, word, fact }) {
   if (list.some((h) => h.subject === subject && h.status === "assigned")) return list;
+  const hw = pickHomeworkTemplate(subject, word, fact);
   return [...list, {
-    id: `${skill.id}-${Date.now()}`,
-    subject, grade, skillId: skill.id, skillTitle: skill.title,
-    title: homework.title, materials: homework.materials || [], steps: homework.steps || [],
+    id: `${subject}-${Date.now()}`,
+    subject, grade, skillTitle: DAILY_SUBJECT_LABEL[subject],
+    title: hw.title, materials: hw.materials || [], steps: hw.steps || [],
     assignedDate: todayStr(), status: "assigned",
   }];
 }
@@ -7556,13 +6988,13 @@ function HomeworkScreen({ homework, onSave, onExit }) {
   const finished = homework.filter((h) => h.status === "checked").slice(-10).reverse();
   const stickers = homework.filter((h) => h.sticker).map((h) => h.sticker);
   const item = homework.find((h) => h.id === openId);
-  const colorFor = (s) => (CLASS_PERIODS.find((p) => p.subject === s) || { color: "#2B2250" }).color;
+  const colorFor = (s) => DAILY_SUBJECT_COLOR[s] || "#2B2250";
 
   function update(id, patch) { onSave(homework.map((h) => (h.id === id ? { ...h, ...patch } : h))); }
 
   function openItem(h) { setOpenId(h.id); setChecked({}); setPhase("steps"); setFeeling(null); setNote(""); setReply(null); }
 
-  async function submit() {
+  function submit() {
     const sticker = HOMEWORK_STICKERS[Math.floor(Math.random() * HOMEWORK_STICKERS.length)];
     addCoins(5);
     update(item.id, { status: "done", doneDate: todayStr(), feeling, note: note.trim(), sticker, parentNote: undefined });
@@ -7570,8 +7002,9 @@ function HomeworkScreen({ homework, onSave, onExit }) {
     setPhase("celebrate");
     speak("Awesome job finishing your homework!", 0.9);
     if (note.trim()) {
-      const r = await askClaude(`A ${SKILL_GRADE_LABEL[item.grade]} student just finished a hands-on homework activity called "${item.title}" (about ${item.skillTitle}) and said: "${note.trim()}". Reply as Ms. Bright in 1-2 warm, specific sentences that celebrate what they did and connect it back to what they learned.`, 200);
-      if (r) { setReply(r); speak(r, 0.9); }
+      const r = HOMEWORK_CELEBRATIONS[Math.floor(Math.random() * HOMEWORK_CELEBRATIONS.length)];
+      setReply(r);
+      speak(r, 0.9);
     }
   }
 
@@ -7600,7 +7033,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
           <div className="text-7xl mb-3 pop">{item.sticker || "🌟"}</div>
           <h2 className="text-2xl font-black mb-1" style={{ color: "#2B2250" }}>Homework done!</h2>
           <p className="text-sm mb-4" style={{ color: "#8B8499" }}>You earned a new sticker. A grown-up will take a look soon.</p>
-          {reply && <div className="text-sm p-4 rounded-2xl mb-4 text-left" style={{ background: `${color}14`, color: "#2B2250" }}><b>Ms. Bright:</b> {reply}</div>}
+          {reply && <div className="text-sm p-4 rounded-2xl mb-4 text-left" style={{ background: `${color}14`, color: "#2B2250" }}>{reply}</div>}
           <button onClick={back} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color }}>Back to Homework</button>
         </div>
       ), back);
@@ -7617,7 +7050,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
               </button>
             ))}
           </div>
-          <div className="text-xs font-bold mb-1.5" style={{ color: "#8B8499" }}>Tell Ms. Bright what you did or found out (optional)</div>
+          <div className="text-xs font-bold mb-1.5" style={{ color: "#8B8499" }}>What did you do or find out? (optional)</div>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="I found out that..."
             className="w-full text-sm px-3 py-2.5 rounded-xl outline-none mb-4" style={{ border: "2px solid #EEE6D6", color: "#2B2250" }} />
           <button onClick={submit} disabled={!feeling} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color, opacity: feeling ? 1 : 0.5 }}>Turn It In</button>
@@ -7625,9 +7058,8 @@ function HomeworkScreen({ homework, onSave, onExit }) {
       ), () => setPhase("steps"));
     }
     const allChecked = item.steps.length > 0 && item.steps.every((_, i) => checked[i]);
-    return shell(CLASS_SUBJECT_LABEL[item.subject], (
+    return shell(DAILY_SUBJECT_LABEL[item.subject], (
       <>
-        <div className="text-xs font-black uppercase tracking-widest mb-1" style={{ color }}>{item.skillTitle}</div>
         <div className="flex items-start gap-2 mb-3">
           <h1 className="text-xl font-black flex-1" style={{ color: "#2B2250" }}>{item.title}</h1>
           <button onClick={() => speakSequence([item.title, item.materials.length ? `You'll need: ${item.materials.join(", ")}` : "", ...item.steps.map((s, i) => `Step ${i + 1}. ${s}`)].filter(Boolean), 0.85, 450)}
@@ -7668,7 +7100,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
             const f = HOMEWORK_FEELINGS.find((x) => x.id === h.feeling);
             return (
               <div key={h.id} className="rounded-2xl p-4" style={{ background: "#fff", border: `2px solid ${colorFor(h.subject)}` }}>
-                <div className="text-xs font-black uppercase tracking-widest" style={{ color: colorFor(h.subject) }}>{CLASS_SUBJECT_LABEL[h.subject]} · {h.doneDate}</div>
+                <div className="text-xs font-black uppercase tracking-widest" style={{ color: colorFor(h.subject) }}>{DAILY_SUBJECT_LABEL[h.subject]} · {h.doneDate}</div>
                 <div className="font-black text-sm mb-1" style={{ color: "#2B2250" }}>{h.title}</div>
                 {f && <div className="text-xs mb-1" style={{ color: "#5B6B7A" }}>Felt: {f.emoji} {f.label}</div>}
                 {h.note && <div className="text-xs mb-2 italic" style={{ color: "#5B6B7A" }}>“{h.note}”</div>}
@@ -7701,7 +7133,7 @@ function HomeworkScreen({ homework, onSave, onExit }) {
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg" style={{ background: `${colorFor(h.subject)}18` }}>✋</div>
             <div className="flex-1">
               <div className="font-black text-sm" style={{ color: "#2B2250" }}>{h.title}</div>
-              <div className="text-xs" style={{ color: "#8B8499" }}>{CLASS_SUBJECT_LABEL[h.subject]}{h.parentNote ? " · sent back to try again" : h.assignedDate !== todayStr() ? ` · from ${h.assignedDate}` : " · new today"}</div>
+              <div className="text-xs" style={{ color: "#8B8499" }}>{DAILY_SUBJECT_LABEL[h.subject]}{h.parentNote ? " · sent back to try again" : h.assignedDate !== todayStr() ? ` · from ${h.assignedDate}` : " · new today"}</div>
             </div>
             <ArrowRight size={16} style={{ color: "#C9C2D6" }} />
           </button>
@@ -7725,58 +7157,286 @@ function HomeworkScreen({ homework, onSave, onExit }) {
   ));
 }
 
-function SchoolDay({ childName, onExit, onOpenPlacement }) {
-  const [progress, setProgress] = useState(null);
-  const [day, setDay] = useState(null);
+function pickDailyWords(grade, masteredWords) {
+  const all = WORD_LISTS[grade];
+  const notMastered = all.filter((w) => !masteredWords.includes(w));
+  const pool = notMastered.length >= DAILY_WORDS_PER_DAY ? notMastered : all;
+  return shuffle(pool).slice(0, DAILY_WORDS_PER_DAY);
+}
+function pickDailyFacts(grade, masteredIds) {
+  const all = factList(grade);
+  const notMastered = all.filter((f) => !masteredIds.includes(f.id));
+  const pool = notMastered.length >= DAILY_FACTS_PER_DAY ? notMastered : all;
+  return shuffle(pool).slice(0, DAILY_FACTS_PER_DAY);
+}
+
+// Builds today's lesson fresh: picks words/facts not yet mastered first, and
+// advances the story/word-problem rotation so each day is different.
+async function buildDailyLesson(levels) {
+  const [readingProg, mathProg, rotation] = await Promise.all([
+    readJsonKey(STORAGE_KEY, emptyProgress()),
+    readJsonKey(MATH_STORAGE_KEY, mathEmptyProgress()),
+    readJsonKey(DAILY_ROTATION_KEY, { reading: { storyIdx: 0 }, math: { problemIdx: 0 } }),
+  ]);
+  const readingGrade = levels.reading;
+  const mathGrade = levels.math;
+  const masteredWords = (readingProg[readingGrade] && readingProg[readingGrade].mastered) || [];
+  const masteredFactIds = (mathProg[mathGrade] && mathProg[mathGrade].mastered) || [];
+  const words = pickDailyWords(readingGrade, masteredWords);
+  const facts = pickDailyFacts(mathGrade, masteredFactIds);
+  const storyCount = STORIES[readingGrade].length;
+  const problemCount = WORD_PROBLEMS[mathGrade].length;
+  const storyIdx = rotation.reading.storyIdx % storyCount;
+  const problemIdx = rotation.math.problemIdx % problemCount;
+  const next = {
+    date: todayStr(),
+    reading: { grade: readingGrade, words, storyIdx, done: false },
+    math: { grade: mathGrade, facts, problemIdx, done: false },
+  };
+  await writeJsonKey(DAILY_LESSON_KEY, next);
+  await writeJsonKey(DAILY_ROTATION_KEY, {
+    reading: { storyIdx: (storyIdx + 1) % storyCount },
+    math: { problemIdx: (problemIdx + 1) % problemCount },
+  });
+  return next;
+}
+
+// Reading block: see today's words, a quick spelling check on them, then
+// today's story. Mirrors the "I do / we do / you do" shape of a real
+// reading lesson, built entirely from the app's own word lists and stories.
+function DailyReadingLesson({ grade, words, storyIdx, onDone, onExit }) {
+  const color = DAILY_SUBJECT_COLOR.reading;
+  const [step, setStep] = useState("words"); // words | check | story
+  const [checkIdx, setCheckIdx] = useState(0);
+  const [typed, setTyped] = useState("");
+  const [status, setStatus] = useState(null);
+  const [correctCount, setCorrectCount] = useState(0);
+  const story = STORIES[grade][storyIdx % STORIES[grade].length];
+  const word = words[checkIdx];
+
+  useEffect(() => {
+    if (step !== "check") return;
+    speak(word);
+    setTyped("");
+    setStatus(null);
+  }, [step, checkIdx]); // eslint-disable-line
+
+  function checkWord() {
+    const ok = typed.trim().toLowerCase() === word.toLowerCase();
+    setStatus(ok ? "correct" : "wrong");
+    playChime(ok);
+    recordActivity(ACTIVITY_KEY, ok);
+    if (ok) setCorrectCount((c) => c + 1);
+  }
+  function nextCheck() {
+    if (checkIdx + 1 < words.length) setCheckIdx(checkIdx + 1);
+    else setStep("story");
+  }
+  function finishReading(alsoExit) {
+    onDone({ correct: correctCount, total: words.length }, alsoExit);
+  }
+
+  if (step === "words") {
+    return (
+      <div className="max-w-md mx-auto pb-10">
+        <TopBar title="Reading · Today's Words" color={color} onExit={onExit} />
+        <div className="px-5 pt-6">
+          <p className="text-sm mb-4" style={{ color: "#8B8499" }}>Here are today's words. Tap any word to hear it.</p>
+          <div className="grid grid-cols-1 gap-2 mb-6">
+            {words.map((w) => (
+              <button key={w} onClick={() => speak(w)} className="kbtn rounded-xl p-3 flex items-center justify-between text-left" style={{ background: "#fff", border: "2px solid #EEE6D6" }}>
+                <span className="font-black text-lg" style={{ color: "#2B2250" }}>{w}</span>
+                <Volume2 size={18} style={{ color }} />
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setStep("check")} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color }}>Quick Spelling Check</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "check") {
+    return (
+      <div className="max-w-md mx-auto pb-10">
+        <TopBar title="Reading · Quick Check" color={color} onExit={onExit} />
+        <div className="px-5 pt-6 text-center">
+          <div className="text-xs font-bold mb-4" style={{ color: "#8B8499" }}>Word {checkIdx + 1} of {words.length}</div>
+          <div key={checkIdx} className="pop rounded-3xl py-10 px-6 mb-5" style={{ background: "#fff", border: `3px solid ${color}` }}>
+            <button onClick={() => speak(word)} className="kbtn inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm" style={{ background: `${color}22`, color }}>
+              <Volume2 size={16} /> Hear the word
+            </button>
+          </div>
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (status === "correct" ? nextCheck() : checkWord())}
+            className={`w-full text-center text-xl font-bold py-3 rounded-xl mb-3 outline-none ${status === "wrong" ? "shakeIt" : ""}`}
+            style={{ border: `2px solid ${status === "correct" ? "#6FAE8B" : status === "wrong" ? "#D98551" : "#EEE6D6"}`, color: "#2B2250" }} placeholder="type here" />
+          {status === "correct" && <div className="font-bold mb-4" style={{ color: "#6FAE8B" }}>Got it!</div>}
+          {status === "wrong" && <div className="text-sm mb-4" style={{ color: "#D98551" }}>{(diagnoseSpellingMiss(typed, word) || {}).text || "Try again — sound it out."}</div>}
+          <button onClick={status === "correct" ? nextCheck : checkWord} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color }}>
+            {status === "correct" ? (checkIdx + 1 < words.length ? "Next Word" : "Read Today's Story") : "Check"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <StoryReader story={story} grade={grade} color={color}
+      onBack={() => finishReading(false)}
+      onExit={() => finishReading(true)}
+    />
+  );
+}
+
+// Math block: see today's facts, a quick facts check, then a word problem.
+function DailyMathLesson({ grade, facts, problemIdx, onDone, onExit }) {
+  const color = DAILY_SUBJECT_COLOR.math;
+  const [step, setStep] = useState("facts"); // facts | check | problem
+  const [checkIdx, setCheckIdx] = useState(0);
+  const [typed, setTyped] = useState("");
+  const [status, setStatus] = useState(null);
+  const [correctCount, setCorrectCount] = useState(0);
+  const problems = WORD_PROBLEMS[grade];
+  const problem = problems[problemIdx % problems.length];
+  const fact = facts[checkIdx];
+
+  useEffect(() => {
+    if (step !== "check") return;
+    mathSpeak(factSpeech(fact));
+    setTyped("");
+    setStatus(null);
+  }, [step, checkIdx]); // eslint-disable-line
+
+  function checkFact() {
+    const ok = Number(typed.trim()) === fact.answer;
+    setStatus(ok ? "correct" : "wrong");
+    playChime(ok);
+    recordActivity(MATH_ACTIVITY_KEY, ok);
+    if (ok) setCorrectCount((c) => c + 1);
+  }
+  function nextCheck() {
+    if (checkIdx + 1 < facts.length) setCheckIdx(checkIdx + 1);
+    else setStep("problem");
+  }
+  function finishMath(alsoExit) {
+    onDone({ correct: correctCount, total: facts.length }, alsoExit);
+  }
+
+  if (step === "facts") {
+    return (
+      <div className="max-w-md mx-auto pb-10">
+        <MathTopBar title="Math · Today's Facts" color={color} onExit={onExit} />
+        <div className="px-5 pt-6">
+          <p className="text-sm mb-4" style={{ color: "#5B6B7A" }}>Here are today's facts. Tap any to hear it.</p>
+          <div className="grid grid-cols-1 gap-2 mb-6">
+            {facts.map((f) => (
+              <button key={f.id} onClick={() => mathSpeak(factSpeech(f))} className="kbtn rounded-xl p-3 flex items-center justify-between text-left" style={{ background: "#fff", border: "2px solid #E7ECFA" }}>
+                <span className="font-black text-lg" style={{ color: "#1B2430" }}>{factDisplay(f)} = {f.answer}</span>
+                <Volume2 size={18} style={{ color }} />
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setStep("check")} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color }}>Quick Facts Check</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "check") {
+    return (
+      <div className="max-w-md mx-auto pb-10">
+        <MathTopBar title="Math · Quick Check" color={color} onExit={onExit} />
+        <div className="px-5 pt-6 text-center">
+          <div className="text-xs font-bold mb-4" style={{ color: "#5B6B7A" }}>Fact {checkIdx + 1} of {facts.length}</div>
+          <div key={checkIdx} className="pop rounded-3xl py-10 px-6 mb-5" style={{ background: "#fff", border: `3px solid ${color}` }}>
+            <div className="text-3xl font-black mb-3" style={{ color: "#1B2430" }}>{factDisplay(fact)} = ?</div>
+            <button onClick={() => mathSpeak(factSpeech(fact))} className="kbtn inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm" style={{ background: `${color}22`, color }}>
+              <Volume2 size={16} /> Hear it
+            </button>
+          </div>
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (status === "correct" ? nextCheck() : checkFact())} inputMode="numeric"
+            className={`w-full text-center text-xl font-bold py-3 rounded-xl mb-3 outline-none ${status === "wrong" ? "shakeIt" : ""}`}
+            style={{ border: `2px solid ${status === "correct" ? "#6FAE8B" : status === "wrong" ? "#D98551" : "#E7ECFA"}`, color: "#1B2430" }} placeholder="type the answer" />
+          {status === "correct" && <div className="font-bold mb-4" style={{ color: "#6FAE8B" }}>Got it!</div>}
+          {status === "wrong" && <div className="font-bold mb-4" style={{ color: "#D98551" }}>Not quite — try again.</div>}
+          <button onClick={status === "correct" ? nextCheck : checkFact} className="kbtn w-full py-3 rounded-xl font-black text-white" style={{ background: color }}>
+            {status === "correct" ? (checkIdx + 1 < facts.length ? "Next Fact" : "Try a Word Problem") : "Check"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <WordProblemReader problem={problem} color={color}
+      onBack={() => finishMath(false)}
+      onExit={() => finishMath(true)}
+    />
+  );
+}
+
+function DailyLesson({ childName, onExit, onOpenPlacement }) {
+  const [levels, setLevels] = useState(null);
+  const [lesson, setLesson] = useState(null);
   const [placement, setPlacement] = useState({});
-  const [open, setOpen] = useState(null); // { subject, grade, skill, color }
+  const [view, setView] = useState("home"); // home | reading | math
+  const [changing, setChanging] = useState(null); // "reading" | "math"
   const [onBreak, setOnBreak] = useState(false);
-  const [changing, setChanging] = useState(null); // subject whose level is being changed
   const [homework, setHomework] = useState([]);
   const [showHomework, setShowHomework] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const [p, d, pl, hw] = await Promise.all([
-        readJsonKey(CLASS_PROGRESS_KEY, { levels: {}, mastered: {}, attempts: {} }),
-        readJsonKey(SCHOOL_DAY_KEY, null),
+      const [savedLevels, pl, hw] = await Promise.all([
+        readJsonKey(DAILY_LEVELS_KEY, {}),
         loadPlacementResults(),
         readJsonKey(HOMEWORK_KEY, []),
       ]);
-      setHomework(Array.isArray(hw) ? hw : []);
-      // Starting levels come from the placement test: Math from Math, the
-      // rest from Reading (science and social studies are read, too).
-      const fromReading = (pl.reading && pl.reading.level) || null;
-      const levels = { ...p.levels };
-      if (!levels.math && pl.math) levels.math = pl.math.level;
-      ["english", "science", "social"].forEach((s) => { if (!levels[s] && fromReading) levels[s] = fromReading; });
-      setProgress({ levels, mastered: p.mastered || {}, attempts: p.attempts || {} });
-      setDay(d && d.date === todayStr() ? d : { date: todayStr(), done: {} });
+      // Starting levels come from the placement test, capped at 5th (the
+      // app's built-in content for Daily Lesson goes up to 5th for now).
+      const cap5 = (g) => (g && WORD_LISTS[g] ? g : "5");
+      const nextLevels = {
+        reading: savedLevels.reading || (pl.reading ? cap5(pl.reading.level) : "K"),
+        math: savedLevels.math || (pl.math ? cap5(pl.math.level) : "K"),
+      };
+      setLevels(nextLevels);
       setPlacement(pl);
+      setHomework(Array.isArray(hw) ? hw : []);
+
+      const saved = await readJsonKey(DAILY_LESSON_KEY, null);
+      const built = saved && saved.date === todayStr() ? saved : await buildDailyLesson(nextLevels);
+      setLesson(built);
     })();
   }, []);
 
-  async function saveProgress(next) { setProgress(next); await writeJsonKey(CLASS_PROGRESS_KEY, next); }
   async function saveHomework(next) { setHomework(next); await writeJsonKey(HOMEWORK_KEY, next); }
 
-  function setLevel(subject, grade) {
-    saveProgress({ ...progress, levels: { ...progress.levels, [subject]: grade } });
+  async function setLevel(subject, grade) {
+    const nextLevels = { ...levels, [subject]: grade };
+    setLevels(nextLevels);
+    await writeJsonKey(DAILY_LEVELS_KEY, nextLevels);
     setChanging(null);
+    const built = await buildDailyLesson(nextLevels);
+    setLesson(built);
   }
 
-  async function finishClass(subject, grade, skill, result) {
-    addCoins(10 + (result.mastered ? 5 : 0));
-    const attempts = { ...progress.attempts, [skill.id]: [...(progress.attempts[skill.id] || []), { date: todayStr(), score: result.score, total: result.total }].slice(-10) };
-    const mastered = result.mastered ? { ...progress.mastered, [skill.id]: { date: todayStr(), score: result.score, total: result.total } } : progress.mastered;
-    await saveProgress({ ...progress, attempts, mastered });
-    const nextDay = { ...day, done: { ...day.done, [subject]: { skillId: skill.id, title: skill.title, score: result.score, total: result.total } } };
-    setDay(nextDay);
-    await writeJsonKey(SCHOOL_DAY_KEY, nextDay);
-    const withHomework = assignHomework(homework, { subject, grade, skill, homework: result.homework });
+  async function finishSubject(subject, result, alsoExit) {
+    const mastered = result.total > 0 && result.correct === result.total;
+    addCoins(10 + (mastered ? 5 : 0));
+    const nextLesson = { ...lesson, [subject]: { ...lesson[subject], done: true, correct: result.correct, total: result.total } };
+    setLesson(nextLesson);
+    await writeJsonKey(DAILY_LESSON_KEY, nextLesson);
+    const detail = lesson[subject];
+    const withHomework = assignHomework(homework, {
+      subject, grade: detail.grade,
+      word: subject === "reading" ? detail.words[0] : undefined,
+      fact: subject === "math" ? detail.facts[0] : undefined,
+    });
     if (withHomework !== homework) await saveHomework(withHomework);
+    if (alsoExit) onExit(); else setView("home");
   }
 
-  if (!progress || !day) {
+  if (!levels || !lesson) {
     return <div style={{ background: "#FAF8F4", minHeight: "100vh" }} className="flex items-center justify-center"><div style={{ color: "#2B2250" }} className="font-bold">Loading...</div></div>;
   }
 
@@ -7784,44 +7444,51 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
     return <HomeworkScreen homework={homework} onSave={saveHomework} onExit={() => setShowHomework(false)} />;
   }
 
-  if (open) {
-    return <ClassLesson subject={open.subject} grade={open.grade} skill={open.skill} color={open.color}
-      onExit={() => setOpen(null)} onFinished={(r) => finishClass(open.subject, open.grade, open.skill, r)} />;
+  if (view === "reading") {
+    return <DailyReadingLesson grade={lesson.reading.grade} words={lesson.reading.words} storyIdx={lesson.reading.storyIdx}
+      onDone={(r, alsoExit) => finishSubject("reading", r, alsoExit)} onExit={onExit} />;
+  }
+  if (view === "math") {
+    return <DailyMathLesson grade={lesson.math.grade} facts={lesson.math.facts} problemIdx={lesson.math.problemIdx}
+      onDone={(r, alsoExit) => finishSubject("math", r, alsoExit)} onExit={onExit} />;
   }
 
-  const needsSetup = CLASS_PERIODS.some((p) => !progress.levels[p.subject]);
-  const doneCount = CLASS_PERIODS.filter((p) => day.done[p.subject]).length;
+  const needsSetup = !placement.math && !placement.reading;
+  const doneCount = (lesson.reading.done ? 1 : 0) + (lesson.math.done ? 1 : 0);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const DAILY_PERIODS = [
+    { subject: "reading", label: "Reading", color: DAILY_SUBJECT_COLOR.reading, gradeLabels: GRADE_LABEL, gradeKeys: Object.keys(WORD_LISTS) },
+    { subject: "math", label: "Math", color: DAILY_SUBJECT_COLOR.math, gradeLabels: MATH_GRADE_LABEL, gradeKeys: Object.keys(FACTS) },
+  ];
 
   return (
     <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Trebuchet MS', 'Verdana', sans-serif" }}>
       <div className="max-w-md mx-auto pb-10">
-        <TopBar title="School Day" color="#2B2250" onExit={onExit} />
+        <TopBar title="Daily Lesson" color="#2B2250" onExit={onExit} />
         <div className="px-5 pt-5">
           <div className="rounded-2xl p-4 mb-5" style={{ background: "#2B2250" }}>
-            <div className="text-white font-black text-lg">{greeting}{childName ? `, ${childName}` : ""}! 🏫</div>
-            <div className="text-xs mb-3" style={{ color: "#C9C2D6" }}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · Ms. Bright's class</div>
+            <div className="text-white font-black text-lg">{greeting}{childName ? `, ${childName}` : ""}! 📚</div>
+            <div className="text-xs mb-3" style={{ color: "#C9C2D6" }}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · Today's free lesson</div>
             <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
-              <div className="h-full rounded-full" style={{ width: `${(doneCount / CLASS_PERIODS.length) * 100}%`, background: "#E8B84B", transition: "width 400ms" }} />
+              <div className="h-full rounded-full" style={{ width: `${(doneCount / DAILY_PERIODS.length) * 100}%`, background: "#E8B84B", transition: "width 400ms" }} />
             </div>
-            <div className="text-xs font-bold mt-1.5" style={{ color: "#E8B84B" }}>{doneCount === CLASS_PERIODS.length ? "All classes done today — amazing work!" : `${doneCount} of ${CLASS_PERIODS.length} classes done today`}</div>
+            <div className="text-xs font-bold mt-1.5" style={{ color: "#E8B84B" }}>{doneCount === DAILY_PERIODS.length ? "Both done today — amazing work!" : `${doneCount} of ${DAILY_PERIODS.length} done today`}</div>
           </div>
 
-          {needsSetup && !placement.math && !placement.reading && (
+          {needsSetup && (
             <button onClick={onOpenPlacement} className="kbtn w-full rounded-2xl p-3 mb-4 text-left text-xs font-bold" style={{ background: "#E8B84B22", color: "#2B2250", border: "2px solid #E8B84B" }}>
-              ⭐ Take the Placement Test first so Ms. Bright can start each class at just the right level. Or pick a grade for each class below.
+              ⭐ Take the Placement Test first so today's lesson starts at just the right level. Or pick a grade for each subject below.
             </button>
           )}
 
           <div className="space-y-3">
-            {CLASS_PERIODS.map((p, i) => {
-              const level = progress.levels[p.subject];
-              const next = level ? nextClassSkill(p.subject, level, progress.mastered) : null;
-              const done = day.done[p.subject];
+            {DAILY_PERIODS.map((p, i) => {
+              const level = levels[p.subject];
+              const done = lesson[p.subject].done;
               return (
                 <React.Fragment key={p.subject}>
-                  {i === 2 && (
+                  {i === 1 && (
                     <button onClick={() => setOnBreak(true)} className="kbtn w-full rounded-2xl p-3 flex items-center gap-3 text-left" style={{ background: "#fff", border: "2px dashed #EEE6D6" }}>
                       <Coffee size={18} style={{ color: "#E8B84B" }} />
                       <div className="flex-1 text-sm font-black" style={{ color: "#2B2250" }}>Brain Break <span className="text-xs font-bold" style={{ color: "#8B8499" }}>— stretch & breathe</span></div>
@@ -7829,36 +7496,28 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
                   )}
                   <div className="rounded-2xl p-4" style={{ background: "#fff", border: `2px solid ${done ? "#6FAE8B" : p.color}` }}>
                     <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs font-black uppercase tracking-widest" style={{ color: p.color }}>Period {i + 1} · {p.label}</div>
+                      <div className="text-xs font-black uppercase tracking-widest" style={{ color: p.color }}>{p.label}</div>
                       <button onClick={() => setChanging(changing === p.subject ? null : p.subject)} className="kbtn text-[10px] font-black px-2 py-1 rounded-full" style={{ background: `${p.color}18`, color: p.color }}>
-                        {level ? SKILL_GRADE_LABEL[level] : "Pick grade"} ▾
+                        {p.gradeLabels[level]} ▾
                       </button>
                     </div>
                     {changing === p.subject && (
-                      <div className="grid grid-cols-5 gap-1 my-2">
-                        {SKILL_GRADES.map((g) => (
+                      <div className="grid grid-cols-3 gap-1 my-2">
+                        {p.gradeKeys.map((g) => (
                           <button key={g} onClick={() => setLevel(p.subject, g)} className="kbtn py-1.5 rounded-lg font-black text-[10px]" style={{ background: level === g ? p.color : "#EEE6D6", color: level === g ? "#fff" : "#2B2250" }}>{gradeShortLabel(g)}</button>
                         ))}
                       </div>
                     )}
-                    {next ? (
-                      <>
-                        {done && (
-                          <div className="text-sm font-bold mb-2" style={{ color: "#4F8A6B" }}>✓ Done today: {done.title} ({done.score}/{done.total} on your own)</div>
-                        )}
-                        <div className="font-black text-base mb-0.5" style={{ color: "#2B2250" }}>{done ? `Next: ${next.skill.title}` : next.skill.title}</div>
-                        <div className="text-xs mb-3" style={{ color: "#8B8499" }}>
-                          {next.grade !== level ? `Moving up to ${SKILL_GRADE_LABEL[next.grade]}!` : done ? "Want to keep going?" : "Today's lesson"}
-                        </div>
-                        <button onClick={() => setOpen({ subject: p.subject, grade: next.grade, skill: next.skill, color: p.color })} className="kbtn w-full py-2.5 rounded-xl font-black text-sm text-white" style={{ background: done ? "#6FAE8B" : p.color }}>
-                          {done ? "Do Another Lesson" : "Start Class"}
-                        </button>
-                      </>
-                    ) : level ? (
-                      <div className="text-sm font-bold" style={{ color: "#4F8A6B" }}>Every skill through 12th grade mastered! 🎓</div>
+                    {done ? (
+                      <div className="text-sm font-bold mb-2" style={{ color: "#4F8A6B" }}>✓ Done today: {lesson[p.subject].correct}/{lesson[p.subject].total} on the quick check</div>
                     ) : (
-                      <div className="text-xs" style={{ color: "#8B8499" }}>Pick a grade to start this class.</div>
+                      <div className="text-xs mb-3" style={{ color: "#8B8499" }}>
+                        {p.subject === "reading" ? `${lesson.reading.words.length} words + today's story` : `${lesson.math.facts.length} facts + a word problem`}
+                      </div>
                     )}
+                    <button onClick={() => setView(p.subject)} className="kbtn w-full py-2.5 rounded-xl font-black text-sm text-white" style={{ background: done ? "#6FAE8B" : p.color }}>
+                      {done ? "Do It Again" : "Start"}
+                    </button>
                   </div>
                 </React.Fragment>
               );
@@ -7870,9 +7529,9 @@ function SchoolDay({ childName, onExit, onOpenPlacement }) {
                 <button onClick={() => setShowHomework(true)} className="kbtn w-full rounded-2xl p-4 flex items-center gap-3 text-left" style={{ background: "#fff", border: "2px solid #E8B84B" }}>
                   <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-xl" style={{ background: "#E8B84B22" }}>✋</div>
                   <div className="flex-1">
-                    <div className="text-xs font-black uppercase tracking-widest" style={{ color: "#B5893A" }}>Period 5 · Homework</div>
+                    <div className="text-xs font-black uppercase tracking-widest" style={{ color: "#B5893A" }}>Homework</div>
                     <div className="font-black text-sm" style={{ color: "#2B2250" }}>{due ? `${due} hands-on activit${due === 1 ? "y" : "ies"} to do` : "No homework right now"}</div>
-                    <div className="text-xs" style={{ color: "#8B8499" }}>{toCheck ? `${toCheck} waiting for a grown-up to check` : "Off-screen activities from today's classes"}</div>
+                    <div className="text-xs" style={{ color: "#8B8499" }}>{toCheck ? `${toCheck} waiting for a grown-up to check` : "Off-screen activities from today's lesson"}</div>
                   </div>
                   <ArrowRight size={18} style={{ color: "#C9C2D6" }} />
                 </button>
@@ -7898,17 +7557,16 @@ async function loadPlacementResults() {
   return {};
 }
 
-// A new (or chosen) placement level also sets where School Day classes start:
-// Math from the Math placement; Reading & Writing, Science and Social Studies
-// from the Reading placement. Mastered skills are kept.
+// A new (or chosen) placement level also sets where the Daily Lesson starts
+// for that subject, capped at 5th grade (the built-in content's ceiling).
 async function applyPlacementToClasses(placementSubject, level) {
   try {
-    const res = await window.storage.get("class-progress");
-    const progress = res && res.value ? JSON.parse(res.value) : { levels: {}, mastered: {}, attempts: {} };
-    const subjects = placementSubject === "math" ? ["math"] : ["english", "science", "social"];
-    const levels = { ...(progress.levels || {}) };
-    subjects.forEach((s) => { levels[s] = level; });
-    await window.storage.set("class-progress", JSON.stringify({ ...progress, levels }));
+    const res = await window.storage.get("daily-lesson-levels");
+    const levels = res && res.value ? JSON.parse(res.value) : {};
+    const subject = placementSubject === "math" ? "math" : "reading";
+    const validGrades = subject === "math" ? FACTS : WORD_LISTS;
+    levels[subject] = validGrades[level] ? level : "5";
+    await window.storage.set("daily-lesson-levels", JSON.stringify(levels));
   } catch (e) {}
 }
 
@@ -8054,7 +7712,7 @@ function PlacementTest({ onExit, onStartLearning }) {
           </div>
           <h1 className="text-2xl font-black" style={{ color: "#2B2250" }}>Let's find your starting place</h1>
           <p className="text-sm mt-1.5" style={{ color: "#8B8499" }}>
-            Ms. Bright will ask a few questions to see what you already know. If you don't know an answer, tap <b>I don't know</b> — that's much better than guessing, and it helps Ms. Bright pick the right level for you.
+            This quiz asks a few questions to see what you already know. If you don't know an answer, tap <b>I don't know</b> — that's much better than guessing, and it helps pick the right level for you.
           </p>
         </div>
 
@@ -8199,7 +7857,7 @@ function PlacementTest({ onExit, onStartLearning }) {
 }
 
 // ===================== COINS & AVATAR =====================
-// Coins are earned everywhere (games, School Day classes, homework) and
+// Coins are earned everywhere (games, the Daily Lesson, homework) and
 // spent in the avatar shop — the reward loop apps like Prodigy and Duolingo use.
 const REWARDS_KEY = "rewards";
 const AVATAR_ITEMS = {
@@ -8352,22 +8010,13 @@ function arcadeCardQuestions(cards) {
   return buildUpperQuestions(cards, cards.length).map((q) => ({ q: q.q, choices: q.options, answer: q.correctIndex }));
 }
 
-// Everything the child can play with right now: built-in sets plus every
-// lesson Ms. Bright has already written for them.
+// Everything the child can play with right now: math facts, sight words,
+// and every Upper Grades lesson's practice cards.
 async function loadArcadeSources() {
   const sources = [];
   ["K", "1", "2", "3", "4", "5"].forEach((g) => sources.push({ id: `math-${g}`, group: "Math Facts", label: GRADE_LABEL[g], questions: () => arcadeMathQuestions(g) }));
   ["K", "1", "2", "3", "4", "5"].forEach((g) => sources.push({ id: `words-${g}`, group: "Sight Words (listening)", label: GRADE_LABEL[g], questions: () => arcadeWordQuestions(g) }));
   Object.keys(UPPER_SUBJECTS).forEach((s) => UPPER_GRADES.forEach((g) => sources.push({ id: `upper-${s}-${g}`, group: "Upper Grades", label: `${UPPER_SUBJECTS[s].label} · ${UPPER_GRADE_LABEL[g]}`, questions: () => arcadeCardQuestions(upperCards(s, g)) })));
-  try {
-    const listed = await window.storage.list("class-lessons:");
-    for (const key of (listed && listed.keys) || []) {
-      const [, subject, grade] = key.split(":");
-      const saved = await readJsonKey(key, {});
-      const items = Object.values(saved).flatMap((l) => [...(l.weDo || []), ...(l.youDo || [])]).filter((it) => it.choices && it.choices.length >= 2 && it.choices.length <= 4);
-      if (items.length >= 5) sources.push({ id: `class-${subject}-${grade}`, group: "My School Day Lessons", label: `${CLASS_SUBJECT_LABEL[subject] || subject} · ${SKILL_GRADE_LABEL[grade]}`, questions: () => items.map((it) => ({ q: it.q, choices: it.choices, answer: it.answer })) });
-    }
-  } catch (e) {}
   return sources;
 }
 
@@ -8380,12 +8029,11 @@ function GameArcade({ onExit, onOpenShop }) {
 
   useEffect(() => {
     (async () => {
-      const [list, rewards, progress] = await Promise.all([loadArcadeSources(), loadRewards(), readJsonKey(CLASS_PROGRESS_KEY, { levels: {} })]);
+      const [list, rewards, levels] = await Promise.all([loadArcadeSources(), loadRewards(), readJsonKey("daily-lesson-levels", {})]);
       setSources(list);
       setCoins(rewards.coins);
-      // Start with something at their level: their School Day lessons, or math facts at their math grade.
-      const mathLevel = progress.levels && progress.levels.math;
-      const preferred = list.find((s) => s.group === "My School Day Lessons") || list.find((s) => s.id === `math-${mathLevel}`) || list[0];
+      // Start with something at their level: math facts at their Daily Lesson math grade.
+      const preferred = list.find((s) => s.id === `math-${levels.math}`) || list[0];
       setSourceId(preferred.id);
     })();
   }, []);
@@ -8432,9 +8080,6 @@ function GameArcade({ onExit, onOpenShop }) {
                 </optgroup>
               ))}
             </select>
-            {!sources.some((s) => s.group === "My School Day Lessons") && (
-              <div className="text-[11px] mt-2" style={{ color: "#8B8499" }}>Finish School Day classes to play games with your own lessons too!</div>
-            )}
           </div>
 
           <div className="space-y-3">
@@ -8475,10 +8120,10 @@ function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOp
         </div>
 
         <button onClick={onOpenSchoolDay} className="kbtn w-full rounded-2xl p-5 mb-3 flex items-center gap-4 text-left" style={{ background: "#2B2250" }}>
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-2xl" style={{ background: "rgba(255,255,255,0.15)" }}>🏫</div>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-2xl" style={{ background: "rgba(255,255,255,0.15)" }}>📚</div>
           <div className="flex-1">
-            <div className="font-black text-lg text-white">Today's School Day</div>
-            <div className="text-xs" style={{ color: "#C9C2D6" }}>Reading, Math, Science & Social Studies with Ms. Bright</div>
+            <div className="font-black text-lg text-white">Today's Daily Lesson</div>
+            <div className="text-xs" style={{ color: "#C9C2D6" }}>A free Reading & Math lesson picked just for today</div>
           </div>
           <ArrowRight size={20} color="#fff" />
         </button>
@@ -8521,7 +8166,7 @@ function SubjectPicker({ childName, onSelect, onOpenReport, onOpenSettings, onOp
             </div>
             <div className="flex-1">
               <div className="font-black text-lg" style={{ color: "#2B2250" }}>Upper Grades</div>
-              <div className="text-xs" style={{ color: "#8B8499" }}>4th-12th: Math, English, Science, Social Studies</div>
+              <div className="text-xs" style={{ color: "#8B8499" }}>4th-5th: Math, English, Science, Social Studies</div>
             </div>
             <ArrowRight size={20} style={{ color: "#C9C2D6" }} />
           </button>
@@ -8627,7 +8272,7 @@ function CombinedApp({ childName }) {
         <AvatarShop onExit={() => { setGlobalView(shopReturn); setShopReturn(null); }} />
       )}
       {globalView === "school" && (
-        <SchoolDay childName={childName} onExit={() => setGlobalView(null)} onOpenPlacement={() => setGlobalView("placement")} />
+        <DailyLesson childName={childName} onExit={() => setGlobalView(null)} onOpenPlacement={() => setGlobalView("placement")} />
       )}
       {globalView === "placement" && (
         <PlacementTest onExit={() => setGlobalView(null)} onStartLearning={startLearningAt} />
